@@ -1,0 +1,6 @@
+.ninja_log
+build.ninja
+dpn.app
+dpn.ut
+*.resp
+.cook/
