@@ -6,6 +6,7 @@
 namespace dpn { namespace log { 
 
     std::ostream &error();
+    std::ostream &warning();
 
     void set_verbosity_level(int verbosity_level);
 

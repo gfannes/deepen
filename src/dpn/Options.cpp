@@ -27,7 +27,7 @@ namespace dpn {
             return true;
         };
 
-        MSS(pop_str(exe_name));
+        MSS(pop_str(exe_name), log::error() << "Could not find the executable name" << std::endl);
 
         for (std::string arg; pop_str(arg);)
         {
@@ -36,6 +36,7 @@ namespace dpn {
             if (false) {}
             else if (is("-h", "--help")) { print_help = true; }
             else if (is("-V", "--verbose")) { MSS(pop_num(verbosity_level), log::error() << "Expected a verbosity level" << std::endl); }
+            else if (is("-i", "--input")) { MSS(pop_str(input_filepath), log::error() << "Expected an input filepath" << std::endl); }
             else { log::error() << "Unknown CLI argument `" << arg << "`" << std::endl; }
         }
 
@@ -45,8 +46,9 @@ namespace dpn {
     std::string Options::help() const
     {
         return std::string("Help for ")+exe_name+R"eod(
--h    --help              Print this help
--V    --verbose <NUMBER>  Set verbosity level [default: 0]
+-h    --help                Print this help
+-V    --verbose <NUMBER>    Set verbosity level [default: 0]
+-i    --input   <FILEPATH>  Set verbosity level [default: 0]
 Written by Geert Fannes
 )eod";
     }

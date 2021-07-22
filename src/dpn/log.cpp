@@ -10,6 +10,12 @@ namespace dpn { namespace log {
         os << "Error: ";
         return os;
     }
+    std::ostream &warning()
+    {
+        auto &os = std::cout;
+        os << "Warning: ";
+        return os;
+    }
 
     int g_verbosity_level = 0;
     void set_verbosity_level(int verbosity_level)

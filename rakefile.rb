@@ -35,5 +35,6 @@ end
 
 desc "Run end-to-end tests"
 task :e2e => :build do
-    sh "./dpn.app"
+    sh "./dpn.app -h"
+    sh "./dpn.app -i README.md"
 end

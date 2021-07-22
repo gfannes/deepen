@@ -10,6 +10,8 @@ namespace dpn {
     public:
         App(const Options &options): options_(options) {}
 
+        bool run();
+
     private:
         const Options &options_;
     };

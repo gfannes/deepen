@@ -13,6 +13,8 @@ namespace dpn {
         bool print_help = false;
         int verbosity_level = 0;
 
+        std::string input_filepath;
+
         bool parse(int argc, const char **argv);
         std::string help() const;
 
