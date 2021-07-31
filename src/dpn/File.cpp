@@ -13,8 +13,8 @@ namespace dpn {
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, str);
 
-        Section *section_ptr = nullptr;
-        Metadata *metadata_ptr = nullptr;
+        section::Section *section_ptr = nullptr;
+        section::Metadata *metadata_ptr = nullptr;
         unsigned int empty_count = 0u;
 
         for (auto &line: lines)
@@ -74,7 +74,7 @@ namespace dpn {
                     continue;
                 }
 
-                add_line_to(section_ptr->body);
+                add_line_to(section_ptr->lines);
             }
         }
 

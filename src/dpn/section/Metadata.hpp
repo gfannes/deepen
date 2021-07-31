@@ -1,11 +1,11 @@
-#ifndef HEADER_dpn_Metadata_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_Metadata_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_section_Metadata_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_section_Metadata_hpp_ALREADY_INCLUDED
 
 #include <string>
 #include <vector>
 #include <ostream>
 
-namespace dpn { 
+namespace dpn { namespace section { 
 
     class Metadata
     {
@@ -29,6 +29,6 @@ namespace dpn {
         return os;
     }
 
-}
+} }
 
 #endif

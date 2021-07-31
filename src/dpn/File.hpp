@@ -1,8 +1,8 @@
 #ifndef HEADER_dpn_File_hpp_ALREADY_INCLUDED
 #define HEADER_dpn_File_hpp_ALREADY_INCLUDED
 
-#include <dpn/Metadata.hpp>
-#include <dpn/Section.hpp>
+#include <dpn/section/Metadata.hpp>
+#include <dpn/section/Section.hpp>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -12,10 +12,11 @@ namespace dpn {
     class File
     {
     public:
-        Metadata metadata;
-        Section main_section;
-        std::vector<Section> sub_sections;
+        section::Metadata metadata;
+        section::Section main_section;
+        std::vector<section::Section> sub_sections;
 
+        //TODO: Remove these and replace with dpn::input::append_from_file()
         bool load_from_string(const std::string &str);
         bool load_from_file(const std::string &filepath);
 
