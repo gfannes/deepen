@@ -3,11 +3,13 @@
 `deepen` stores its information in regular files and folders in the filesystem.
 
 * Store in file when leaf
-* Store in folder when non-leaf
+* Store in folder/index when non-leaf
 
 ## Filename
 
-`\d\d-<name>.md`
+* Leaf: `\d\d-<name>.md`
+* Non-leaf:`\d\d-<name>/index.md`
+* This ensures that a file/folder can easily be moved
 
 * How to hiden items that are done
 
