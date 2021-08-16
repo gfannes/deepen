@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 #include <ostream>
 
 namespace dpn { namespace section { 
@@ -11,13 +12,24 @@ namespace dpn { namespace section {
     {
     public:
         std::vector<std::string> lines;
+        std::optional<double> effort;
 
-        void stream(std::ostream &os) const
+        void stream(std::ostream &os, unsigned int level) const
         {
-            os << "[Metadata]{" << std::endl;
-            for (const auto &line: lines)
-                os << "  " << line << std::endl;
-            os << "}" << std::endl;
+            const std::string indent(level*2, ' ');
+
+            os << indent << "[Metadata]";
+            if (effort)
+                os << "(effort:" << *effort << ")";
+            if (!lines.empty())
+            {
+                os << "{" << std::endl;
+                for (const auto &line: lines)
+                    os << "  " << line << std::endl;
+                os << indent << "}" << std::endl;
+            }
+            else
+                os << std::endl;
         }
 
     private:
@@ -25,7 +37,7 @@ namespace dpn { namespace section {
 
     inline std::ostream &operator<<(std::ostream &os, const Metadata &metadata)
     {
-        metadata.stream(os);
+        metadata.stream(os, 0);
         return os;
     }
 

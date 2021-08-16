@@ -11,7 +11,7 @@ end
 desc "Build"
 task :build do
     mode = :debug
-    mode = :release
+    # mode = :release
     sh "cook -g ninja -T c++.std=2a -T #{mode} -O .cook/#{mode} dpn/app"
     sh "ninja -v"
 end

@@ -3,6 +3,7 @@
 #include <dpn/log.hpp>
 #include <gubg/file/system.hpp>
 #include <gubg/string_algo/algo.hpp>
+#include <gubg/Strange.hpp>
 #include <gubg/mss.hpp>
 #include <cassert>
 
@@ -22,7 +23,7 @@ namespace dpn { namespace input {
 
     bool append_from_string(section::Sections &sections, const std::string &content, const std::string &filepath)
     {
-        MSS_BEGIN(bool);
+        MSS_BEGIN(bool, "");
 
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, content);
@@ -76,6 +77,21 @@ namespace dpn { namespace input {
                 section_ptr->title_depth = pair.first;
                 section_ptr->title = line.substr(pair.first+pair.second);
                 empty_count = 0u;
+            }
+            else if (const auto md = util::parse_metadata(line); !!md)
+            {
+                //We found metadata
+
+                MSS(!!section_ptr);
+                auto &metadata = section_ptr->metadata;
+
+                const auto &key = md->first;
+                const auto &value = md->second;
+                if (false) {}
+                else if (key == "effort")
+                {
+                    metadata.effort = std::stod(value);
+                }
             }
             else
             {

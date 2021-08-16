@@ -2,6 +2,7 @@
 #define HEADER_dpn_section_Section_hpp_ALREADY_INCLUDED
 
 #include <dpn/section/Metadata.hpp>
+#include <dpn/section/Aggdata.hpp>
 #include <string>
 #include <vector>
 #include <optional>
@@ -17,8 +18,15 @@ namespace dpn { namespace section {
         std::vector<std::string> lines;
         std::vector<Section> childs;
         std::optional<std::string> filepath;
+        Metadata metadata;
+        Aggdata aggdata;
 
-        void stream(std::ostream &os, unsigned int level) const
+        struct StreamConfig
+        {
+            bool with_lines = true;
+        };
+
+        void stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const
         {
             const std::string indent(level*2, ' ');
 
@@ -26,10 +34,13 @@ namespace dpn { namespace section {
             if (filepath)
                 os << "(filepath:" << *filepath << ")";
             os << "{" << std::endl;
-            for (const auto &line: lines)
-                os << indent << "  " << line << std::endl;
+            metadata.stream(os, level+1);
+            aggdata.stream(os, level+1);
+            if (stream_config.with_lines)
+                for (const auto &line: lines)
+                    os << indent << "  " << line << std::endl;
             for (const auto &child: childs)
-                child.stream(os, level+1);
+                child.stream(os, level+1, stream_config);
             os << indent << "}" << std::endl;
         }
 
@@ -51,7 +62,9 @@ namespace dpn { namespace section {
 
     inline std::ostream &operator<<(std::ostream &os, const Section &section)
     {
-        section.stream(os, 0u);
+        Section::StreamConfig stream_config;
+        stream_config.with_lines = false;
+        section.stream(os, 0u, stream_config);
         return os;
     }
 

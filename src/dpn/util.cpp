@@ -1,4 +1,5 @@
 #include <dpn/util.hpp>
+#include <gubg/Strange.hpp>
 
 namespace dpn { namespace util { 
 
@@ -19,6 +20,19 @@ namespace dpn { namespace util {
         pair.second = ix-pair.first;
 
         return pair;
+    }
+
+    std::optional<KeyValue> parse_metadata(const std::string &line)
+    {
+        gubg::Strange strange{line};
+        if (!strange.pop_if('&'))
+            return std::nullopt;
+
+        KeyValue kv;
+        strange.pop_until(kv.first, ':') || strange.pop_all(kv.first);
+        strange.pop_all(kv.second);
+
+        return kv;
     }
 
 } }
