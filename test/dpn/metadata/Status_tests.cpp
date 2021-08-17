@@ -35,6 +35,12 @@ TEST_CASE("metadata::Status tests", "[ut][metadata][Status]")
         b = Status{State::Design, false};
         m = Status{State::Requirement, true};
     }
+    SECTION("r d")
+    {
+        a = Status{State::Requirement, false};
+        b = Status{State::Design, false};
+        m = Status{State::Requirement, false};
+    }
 
     REQUIRE(metadata::Status::minimum(a, b) == m);
 }

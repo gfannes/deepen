@@ -48,11 +48,21 @@ namespace dpn { namespace section {
                             oss.str(""); oss << agg.total_effort;
                             metadata_items.insert(metadata::Item("E", oss.str()));
 
+                            oss.str(""); oss << agg.minimal_status;
+                            metadata_items.insert(metadata::Item("S", oss.str()));
+
                             oss.str(""); oss << agg.total_todo;
                             metadata_items.insert(metadata::Item("T", oss.str()));
                         }
                         for (const auto &item: metadata.items)
-                            metadata_items.insert(item);
+                        {
+                            if (false) {}
+                            else if (item.key == "C") {}
+                            else if (item.key == "E") {}
+                            else if (item.key == "S") {}
+                            else if (item.key == "T") {}
+                            else metadata_items.insert(item);
+                        }
                     }
 
                     for (const auto &item: metadata_items)
@@ -60,7 +70,10 @@ namespace dpn { namespace section {
                     if (metadata.input_opt)
                     {
                         const auto &input = *metadata.input_opt;
-                        os << " @" << input.effort << " @" << input.status;
+                        if (input.effort.minutes > 0.0)
+                            os << " @" << input.effort;
+                        if (input.status != metadata::Status{metadata::State::Requirement, false})
+                            os << " @" << input.status;
                     }
 
                     os << std::endl;

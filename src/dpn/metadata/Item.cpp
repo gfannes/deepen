@@ -31,9 +31,15 @@ namespace dpn { namespace metadata {
     {
         items.resize(0);
 
+        if (line.empty())
+        {
+            text.clear();
+            return;
+        }
+
         gubg::Strange strange{line};
 
-        if (gubg::Strange tmp; strange.pop_to(tmp, '@'))
+        if (gubg::Strange tmp; strange.front() == '@' || (strange.pop_to(tmp, " @") && strange.pop_front()))
         {
             tmp.rtrim(' ');
             tmp.pop_all(text);

@@ -2,6 +2,7 @@
 #include <catch.hpp>
 using namespace dpn;
 
+#if 0
 TEST_CASE("input/from_file tests", "[disabled][input][from_file]")
 {
     struct Scn
@@ -95,3 +96,4 @@ line1)eod";
         REQUIRE(sections == exp.sections);
     }
 }
+#endif

@@ -57,10 +57,11 @@ namespace dpn { namespace metadata {
         const auto lhs_state = (int)lhs.state;
         const auto rhs_state = (int)rhs.state;
 
+        if (lhs_state < rhs_state)
+            return lhs;
         if (lhs_state == rhs_state)
             return Status{(State)lhs_state, std::min(lhs.done, rhs.done)};
-
-        return Status((State)std::min(lhs_state, rhs_state), true);
+        return rhs;
     }
 
     bool Status::operator==(const Status &rhs) const
