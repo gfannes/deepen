@@ -10,7 +10,7 @@ namespace dpn { namespace input {
     bool append_from_string(section::Sections &sections, const std::string &content, const std::string &filepath);
 
     //Privates
-    bool standardize_title_depths_(section::Sections &sections);
+    bool standardize_depths_(section::Sections &sections);
 
 } }
 

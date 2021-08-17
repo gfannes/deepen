@@ -23,98 +23,99 @@ namespace dpn { namespace input {
 
     bool append_from_string(section::Sections &sections, const std::string &content, const std::string &filepath)
     {
-        MSS_BEGIN(bool, "");
+        MSS_BEGIN(bool);
 
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, content);
 
+        section::Section *title_ptr = nullptr;
         section::Section *section_ptr = nullptr;
-        section::Metadata *metadata_ptr = nullptr;
+        metadata::Metadata *metadata_ptr = nullptr;
         unsigned int empty_count = 0u;
 
-        section::Sections tmp_sections;
-        section::Metadata metadata;
+        section::Sections title_sections;
+        metadata::Metadata metadata;
 
-        for (auto &line: lines)
+        std::string line;
+
+        std::vector<metadata::Item> metadata_items;
+
+        for (auto &raw_line: lines)
         {
-            if (line.starts_with("---"))
+            if (raw_line.starts_with("---"))
             {
                 //Switch from reading Section data to reading Metadata
                 metadata_ptr = &metadata;
-                section_ptr = nullptr;
+                title_ptr = nullptr;
                 continue;
             }
 
-            auto add_line_to = [&](auto &dst){
-                if (line.empty())
-                {
-                    if (!dst.empty())
-                        //Only when there is already some content will we increment empty_count
-                        empty_count++;
-                }
-                else
+            auto process_empty_count = [&](){
+                if (title_ptr)
                 {
                     //Add the collected empty lines
                     for (auto ix = 0u; ix < empty_count; ++ix)
-                        dst.emplace_back();
+                        title_ptr->childs.emplace_back(section::Type::Line);
                     empty_count = 0u;
-
-                    //Add the actual line
-                    dst.emplace_back();
-                    std::swap(line, dst.back());
                 }
             };
 
             if (metadata_ptr)
             {
-                add_line_to(metadata_ptr->lines);
+                section_ptr = nullptr;
             }
-            else if (const auto pair = util::lead_count('#', ' ', line); pair.first > 0)
+            else if (const auto pair = util::lead_count('#', ' ', raw_line); pair.first > 0)
             {
                 //We found a title
-                tmp_sections.emplace_back();
-                section_ptr = &tmp_sections.back();
-                section_ptr->title_depth = pair.first;
-                section_ptr->title = line.substr(pair.first+pair.second);
-                empty_count = 0u;
-            }
-            else if (const auto md = util::parse_metadata(line); !!md)
-            {
-                //We found metadata
 
-                MSS(!!section_ptr);
-                auto &metadata = section_ptr->metadata;
+                process_empty_count();
 
-                const auto &key = md->first;
-                const auto &value = md->second;
-                if (false) {}
-                else if (key == "effort")
-                {
-                    metadata.effort = std::stod(value);
-                }
+                title_sections.emplace_back(section::Type::Title);
+                title_ptr = &title_sections.back();
+                section_ptr = title_ptr;
+                title_ptr->depth = pair.first;
+                line = raw_line.substr(pair.first+pair.second);
             }
             else
             {
-                if (!section_ptr)
+                if (!title_ptr)
                 {
-                    log::warning() << "Dropping line `" << line << "`, there is no Section to add it to" << std::endl;
+                    log::warning() << "Dropping raw_line `" << raw_line << "`, there is no Section to add it to" << std::endl;
                     continue;
                 }
 
-                add_line_to(section_ptr->lines);
+                if (raw_line.empty())
+                {
+                    empty_count++;
+                }
+                else
+                {
+                    process_empty_count();
+
+                    //Add the actual raw_line
+                    title_ptr->childs.emplace_back(section::Type::Line);
+                    section_ptr = &title_ptr->childs.back();
+                    line = raw_line;
+                }
+            }
+
+            if (section_ptr)
+            {
+                metadata::split(section_ptr->text, metadata_items, line);
+                section_ptr->metadata.setup(metadata_items);
             }
         }
 
-        MSS(standardize_title_depths_(tmp_sections));
+        MSS(standardize_depths_(title_sections));
 
-        //Append sections from tmp_sections to sections
-        //but nest them according to title_depth
+        //Append sections from title_sections to sections
+        //but nest them according to depth
         std::vector<section::Sections *> depth0__sections = {&sections};
-        for (const auto &s: tmp_sections)
+        for (const auto &s: title_sections)
         {
-            //Create zero-based title_depth that we can use to index depth0__sections
-            MSS(s.title_depth > 0);
-            const auto depth0 = s.title_depth-1;
+            //Create zero-based depth that we can use to index depth0__sections
+            MSS(s.depth > 0);
+            const auto depth0 = s.depth-1;
 
             if (depth0 == depth0__sections.size())
             {
@@ -132,11 +133,15 @@ namespace dpn { namespace input {
                 depth0__sections[depth0]->back().filepath = filepath;
         }
 
+        //Aggregate metadata for all root sections
+        for (auto &section: sections)
+            section.aggregate_metadata(nullptr);
+
         MSS_END();
     }
 
-    //Rework the title depths to ensure child sections are exactly one level deeper
-    bool standardize_title_depths_(section::Sections &sections)
+    //Rework the text depths to ensure child sections are exactly one level deeper
+    bool standardize_depths_(section::Sections &sections)
     {
         MSS_BEGIN(bool);
 
@@ -144,33 +149,33 @@ namespace dpn { namespace input {
         for (auto ix = 0u; ix < sections.size(); ++ix)
         {
             auto &s = sections[ix];
-            MSS(s.title_depth > 0);
+            MSS(s.depth > 0);
 
-            if (s.title_depth < level)
+            if (s.depth < level)
             {
                 //This section is more towards the root: OK
             }
-            else if (s.title_depth == level)
+            else if (s.depth == level)
             {
                 //This section is at the same level: this is a child
             }
-            else if (s.title_depth == level+1)
+            else if (s.depth == level+1)
             {
                 //This section is one level deeper: this is a child
                 ++level;
             }
-            else if (s.title_depth > level+1)
+            else if (s.depth > level+1)
             {
                 //We only accept a unit step when going deeper
                 //We will move all affected sections to the root
-                const unsigned int shift_count = s.title_depth-level-1;
+                const unsigned int shift_count = s.depth-level-1;
                 for (auto ix2 = ix; ix2 < sections.size(); ++ix2)
                 {
                     auto &s2 = sections[ix2];
-                    if (s2.title_depth >= s.title_depth)
+                    if (s2.depth >= s.depth)
                     {
-                        s2.title_depth -= shift_count;
-                        log::warning() << "Shifting section " << s2.title << " by " << shift_count << " deeper to level " << s2.title_depth << std::endl;
+                        s2.depth -= shift_count;
+                        log::warning() << "Shifting section " << s2.text << " by " << shift_count << " deeper to level " << s2.depth << std::endl;
                     }
                 }
                 ++level;

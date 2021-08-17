@@ -36,7 +36,10 @@ namespace dpn {
             if (false) {}
             else if (is("-h", "--help")) { print_help = true; }
             else if (is("-V", "--verbose")) { MSS(pop_num(verbosity_level), log::error() << "Expected a verbosity level" << std::endl); }
+            else if (is("-u", "--update")) { operation_opt = Operation::Update; }
+            else if (is("-e", "--export")) { operation_opt = Operation::Export; }
             else if (is("-i", "--input")) { MSS(pop_str(input_filepath), log::error() << "Expected an input filepath" << std::endl); }
+            else if (is("-o", "--output")) { MSS(pop_str(output_filepath), log::error() << "Expected an output filepath" << std::endl); }
             else { log::error() << "Unknown CLI argument `" << arg << "`" << std::endl; }
         }
 
@@ -48,7 +51,10 @@ namespace dpn {
         return std::string("Help for ")+exe_name+R"eod(
 -h    --help                Print this help
 -V    --verbose <NUMBER>    Set verbosity level [default: 0]
--i    --input   <FILEPATH>  Set verbosity level [default: 0]
+-u    --update              Perform update operation
+-e    --export              Perform export operation
+-i    --input   <FILEPATH>  Set input filepath
+-o    --output  <FILEPATH>  Set output filepath
 Written by Geert Fannes
 )eod";
     }
