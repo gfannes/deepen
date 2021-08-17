@@ -2,6 +2,12 @@
 
 Deepen intends to use as much as possible commonly available tools:
 
+## Mindmap
+
+* Brainstorm sessions to collect and restructure content
+* Export to `.md` files and folders
+* Import from files/folders
+
 ## File manager
 
 * Browser a file/folder structure
