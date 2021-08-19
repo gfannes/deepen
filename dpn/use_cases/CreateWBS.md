@@ -1,4 +1,4 @@
-# Create WBS @C:61.6% @E:4h10m @S:r @T:1h36m
+# Create WBS @C:50.5% @E:5h5m @S:r @T:2h31m
 
 * From single file
 
@@ -52,7 +52,7 @@
         * Store in internal markup format, eg naft to represent links etc
         * Create folders and file streams on the fly during DFS
 
-## CLI @C:71.4% @E:35m @S:r @T:10m
+## CLI @C:38.5% @E:1h5m @S:r @T:40m
 
 * Add `-u|--update` option @5m @I
     * Output loaded Sections to file, with metadata
@@ -69,7 +69,7 @@
     * Support for unset estimate @10m
     * Store Status and Estimate in Aggregated and use this during calculations @10m
 
-## Parsing Markdown @C:63.3% @E:30m @S:r @T:11m
+## Parsing Markdown @C:34.5% @E:55m @S:r @T:36m
 
 * Create Section Type enum: Title, Line @5m @V
     * Stream support @5m @V
