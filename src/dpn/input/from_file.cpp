@@ -3,7 +3,6 @@
 #include <dpn/log.hpp>
 #include <gubg/file/system.hpp>
 #include <gubg/string_algo/algo.hpp>
-#include <gubg/Strange.hpp>
 #include <gubg/mss.hpp>
 #include <cassert>
 
@@ -29,7 +28,6 @@ namespace dpn { namespace input {
         gubg::string_algo::split_lines(lines, content);
 
         section::Section *title_ptr = nullptr;
-        section::Section *section_ptr = nullptr;
         metadata::Metadata *metadata_ptr = nullptr;
         unsigned int empty_count = 0u;
 
@@ -60,13 +58,13 @@ namespace dpn { namespace input {
                 }
             };
 
+            section::Section *section_ptr = nullptr;
             if (metadata_ptr)
             {
-                section_ptr = nullptr;
             }
             else if (const auto pair = util::lead_count('#', ' ', raw_line); pair.first > 0)
             {
-                //We found a title
+                //We found a Title
 
                 process_empty_count();
 
@@ -75,6 +73,17 @@ namespace dpn { namespace input {
                 section_ptr = title_ptr;
                 title_ptr->depth = pair.first;
                 line = raw_line.substr(pair.first+pair.second);
+            }
+            else if (raw_line.substr(0, 2) == "@[")
+            {
+                //We found a Link
+
+                if (title_ptr)
+                {
+                    title_ptr->childs.emplace_back(section::Type::Link);
+                    section_ptr = &title_ptr->childs.back();
+                    line = raw_line.substr(1, std::string::npos);
+                }
             }
             else
             {
@@ -103,6 +112,11 @@ namespace dpn { namespace input {
             {
                 metadata::split(section_ptr->text, metadata_items, line);
                 section_ptr->metadata.setup(metadata_items);
+
+                if (section_ptr->type == section::Type::Link)
+                {
+                    //TODO: extract link text and recurse parsing the file for Type::Link
+                }
             }
         }
 
