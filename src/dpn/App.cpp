@@ -35,6 +35,7 @@ namespace dpn {
             std::list<std::string> fails;
             for (const auto &root: config_.roots)
             {
+                try
                 {
                     std::filesystem::current_path(root);
                     auto run_node = doc.node("Run");
@@ -50,8 +51,13 @@ namespace dpn {
                         if (rc == 0)
                             ++ok_count;
                         else
-                            fails.push_back(std::filesystem::current_path());
+                            fails.push_back(root);
                     }
+                }
+                catch (...)
+                {
+                    log::error() << "Path `" << root << "` does not exist" << std::endl;
+                    fails.push_back(root);
                 }
                 doc.text("\n");
             }

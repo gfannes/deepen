@@ -37,11 +37,22 @@ namespace dpn { namespace config {
     {
         MSS_BEGIN(bool);
 
-        const auto home = std::getenv("HOME");
-        MSS(!!home);
+        std::string home;
+        {
+            if (const auto home_cstr = std::getenv("HOME"); !!home_cstr)
+            {
+                home = home_cstr;
+            }
+            else if (const auto homedrive = std::getenv("HOMEDRIVE"), homepath = std::getenv("HOMEPATH"); !!homedrive && !!homepath)
+            {
+                home = homedrive;
+                home += homepath;
+            }
+            else
+                MSS(false, log::error() << "Could not find the HOME folder" << std::endl);
+        }
 
-        filepath = home;
-        filepath += "/.config/dpn/config.naft";
+        filepath = home + "/.config/dpn/config.naft";
 
         MSS_END();
     }

@@ -1,3 +1,5 @@
+require("gubg/shared")
+
 task :default do
     sh "rake -T"
 end
@@ -5,14 +7,16 @@ end
 
 desc "Install"
 task :install => :build do
-    sh "sudo cp dpn.app /usr/local/bin/dpn"
+    sh "cp dpn.app #{ENV["gubg"]}/bin/dpn"
 end
 
 desc "Build"
 task :build do
     mode = :debug
     # mode = :release
-    sh "cook -g ninja -T c++.std=2a -T #{mode} -O .cook/#{mode} dpn/app"
+    toolchain = {linux: :gcc, windows: :msvc}[GUBG.os()]
+    cpp_version = {gcc: "2a", msvc: :latest}[toolchain]
+    sh "cook -g ninja -t #{toolchain} -T c++.std=#{cpp_version} -T #{mode} -O .cook/#{mode} dpn/app"
     sh "ninja -v"
 end
 
