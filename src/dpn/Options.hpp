@@ -20,6 +20,8 @@ namespace dpn {
         std::string input_filepath;
         std::string output_filepath;
 
+        std::optional<std::string> command;
+
         bool parse(int argc, const char **argv);
         std::string help() const;
 

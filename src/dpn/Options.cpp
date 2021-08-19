@@ -40,6 +40,7 @@ namespace dpn {
             else if (is("-e", "--export")) { operation_opt = Operation::Export; }
             else if (is("-i", "--input")) { MSS(pop_str(input_filepath), log::error() << "Expected an input filepath" << std::endl); }
             else if (is("-o", "--output")) { MSS(pop_str(output_filepath), log::error() << "Expected an output filepath" << std::endl); }
+            else if (is("-c", "--command")) { command.emplace(); MSS(pop_str(*command), log::error() << "Expected a command string" << std::endl); }
             else { log::error() << "Unknown CLI argument `" << arg << "`" << std::endl; }
         }
 
@@ -55,6 +56,7 @@ namespace dpn {
 -e    --export              Perform export operation
 -i    --input   <FILEPATH>  Set input filepath
 -o    --output  <FILEPATH>  Set output filepath
+-c    --command <STRING>    Run command in each root folder
 Written by Geert Fannes
 )eod";
     }

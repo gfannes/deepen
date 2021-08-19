@@ -20,6 +20,7 @@ int main(int argc, const char **argv)
     else
     {
         App app{options};
+        MSS(app.load_config(), log::error() << "Could not load config" << std::endl);
         MSS(app.run(), log::error() << "Could not run App" << std::endl);
     }
 
