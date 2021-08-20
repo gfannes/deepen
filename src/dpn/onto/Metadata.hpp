@@ -1,12 +1,12 @@
-#ifndef HEADER_dpn_section_Metadata_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_section_Metadata_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_onto_Metadata_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_onto_Metadata_hpp_ALREADY_INCLUDED
 
 #include <string>
 #include <vector>
 #include <optional>
 #include <ostream>
 
-namespace dpn { namespace section { 
+namespace dpn { namespace onto { 
 
     class Metadata
     {

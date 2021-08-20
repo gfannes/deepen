@@ -75,11 +75,11 @@ namespace dpn {
         {
             MSS(!options_.input_filepath.empty());
 
-            section::Sections sections;
-            MSS(input::append_from_file(sections, options_.input_filepath));
+            onto::Nodes nodes;
+            MSS(input::append_from_file(nodes, options_.input_filepath));
 
-            for (const auto &section: sections)
-                std::cout << section << std::endl;
+            for (const auto &node: nodes)
+                std::cout << node << std::endl;
 
             if (options_.operation_opt)
             {
@@ -91,20 +91,20 @@ namespace dpn {
                             if (!options_.output_filepath.empty())
                                 output_filepath = options_.output_filepath;
                             std::ofstream fo{output_filepath};
-                            section::Section::StreamConfig stream_config;
-                            stream_config.mode = section::Section::StreamConfig::Original;
-                            for (const auto &section: sections)
-                                section.stream(fo, 0, stream_config);
+                            onto::Node::StreamConfig stream_config;
+                            stream_config.mode = onto::Node::StreamConfig::Original;
+                            for (const auto &node: nodes)
+                                node.stream(fo, 0, stream_config);
                         }
                         break;
                     case Operation::Export:
                         {
                             MSS(!options_.output_filepath.empty(), log::error() << "Export requires an output filepath" << std::endl;);
                             std::ofstream fo{options_.output_filepath};
-                            section::Section::StreamConfig stream_config;
-                            stream_config.mode = section::Section::StreamConfig::Export;
-                            for (const auto &section: sections)
-                                section.stream(fo, 0, stream_config);
+                            onto::Node::StreamConfig stream_config;
+                            stream_config.mode = onto::Node::StreamConfig::Export;
+                            for (const auto &node: nodes)
+                                node.stream(fo, 0, stream_config);
                         }
                         break;
                 }

@@ -1,9 +1,9 @@
-#ifndef HEADER_dpn_section_enums_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_section_enums_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_onto_enums_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_onto_enums_hpp_ALREADY_INCLUDED
 
 #include <ostream>
 
-namespace dpn { namespace section { 
+namespace dpn { namespace onto { 
 
     enum class Type
     {

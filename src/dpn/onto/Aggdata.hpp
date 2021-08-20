@@ -1,10 +1,10 @@
-#ifndef HEADER_dpn_section_Adddata_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_section_Adddata_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_onto_Adddata_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_onto_Adddata_hpp_ALREADY_INCLUDED
 
 #include <ostream>
 #include <string>
 
-namespace dpn { namespace section { 
+namespace dpn { namespace onto { 
 
     class Aggdata
     {

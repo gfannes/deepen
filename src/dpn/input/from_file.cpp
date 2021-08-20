@@ -8,30 +8,30 @@
 
 namespace dpn { namespace input { 
 
-    bool append_from_file(section::Sections &sections, const std::string &filepath)
+    bool append_from_file(onto::Nodes &nodes, const std::string &filepath)
     {
         MSS_BEGIN(bool);
 
         std::string content;
         MSS(gubg::file::read(content, filepath));
 
-        MSS(append_from_string(sections, content, filepath));
+        MSS(append_from_string(nodes, content, filepath));
 
         MSS_END();
     }
 
-    bool append_from_string(section::Sections &sections, const std::string &content, const std::string &filepath)
+    bool append_from_string(onto::Nodes &nodes, const std::string &content, const std::string &filepath)
     {
         MSS_BEGIN(bool);
 
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, content);
 
-        section::Section *title_ptr = nullptr;
+        onto::Node *title_ptr = nullptr;
         metadata::Metadata *metadata_ptr = nullptr;
         unsigned int empty_count = 0u;
 
-        section::Sections title_sections;
+        onto::Nodes title_nodes;
         metadata::Metadata metadata;
 
         std::string line;
@@ -42,7 +42,7 @@ namespace dpn { namespace input {
         {
             if (raw_line.starts_with("---"))
             {
-                //Switch from reading Section data to reading Metadata
+                //Switch from reading Node data to reading Metadata
                 metadata_ptr = &metadata;
                 title_ptr = nullptr;
                 continue;
@@ -53,12 +53,12 @@ namespace dpn { namespace input {
                 {
                     //Add the collected empty lines
                     for (auto ix = 0u; ix < empty_count; ++ix)
-                        title_ptr->childs.emplace_back(section::Type::Line);
+                        title_ptr->childs.emplace_back(onto::Type::Line);
                     empty_count = 0u;
                 }
             };
 
-            section::Section *section_ptr = nullptr;
+            onto::Node *node_ptr = nullptr;
             if (metadata_ptr)
             {
             }
@@ -68,9 +68,9 @@ namespace dpn { namespace input {
 
                 process_empty_count();
 
-                title_sections.emplace_back(section::Type::Title);
-                title_ptr = &title_sections.back();
-                section_ptr = title_ptr;
+                title_nodes.emplace_back(onto::Type::Title);
+                title_ptr = &title_nodes.back();
+                node_ptr = title_ptr;
                 title_ptr->depth = pair.first;
                 line = raw_line.substr(pair.first+pair.second);
             }
@@ -80,8 +80,8 @@ namespace dpn { namespace input {
 
                 if (title_ptr)
                 {
-                    title_ptr->childs.emplace_back(section::Type::Link);
-                    section_ptr = &title_ptr->childs.back();
+                    title_ptr->childs.emplace_back(onto::Type::Link);
+                    node_ptr = &title_ptr->childs.back();
                     line = raw_line.substr(1, std::string::npos);
                 }
             }
@@ -89,7 +89,7 @@ namespace dpn { namespace input {
             {
                 if (!title_ptr)
                 {
-                    log::warning() << "Dropping raw_line `" << raw_line << "`, there is no Section to add it to" << std::endl;
+                    log::warning() << "Dropping raw_line `" << raw_line << "`, there is no Node to add it to" << std::endl;
                     continue;
                 }
 
@@ -102,94 +102,94 @@ namespace dpn { namespace input {
                     process_empty_count();
 
                     //Add the actual raw_line
-                    title_ptr->childs.emplace_back(section::Type::Line);
-                    section_ptr = &title_ptr->childs.back();
+                    title_ptr->childs.emplace_back(onto::Type::Line);
+                    node_ptr = &title_ptr->childs.back();
                     line = raw_line;
                 }
             }
 
-            if (section_ptr)
+            if (node_ptr)
             {
-                metadata::split(section_ptr->text, metadata_items, line);
-                section_ptr->metadata.setup(metadata_items);
+                metadata::split(node_ptr->text, metadata_items, line);
+                node_ptr->metadata.setup(metadata_items);
 
-                if (section_ptr->type == section::Type::Link)
+                if (node_ptr->type == onto::Type::Link)
                 {
                     //TODO: extract link text and recurse parsing the file for Type::Link
                 }
             }
         }
 
-        MSS(standardize_depths_(title_sections));
+        MSS(standardize_depths_(title_nodes));
 
-        //Append sections from title_sections to sections
+        //Append nodes from title_nodes to nodes
         //but nest them according to depth
-        std::vector<section::Sections *> depth0__sections = {&sections};
-        for (const auto &s: title_sections)
+        std::vector<onto::Nodes *> depth0__nodes = {&nodes};
+        for (const auto &s: title_nodes)
         {
-            //Create zero-based depth that we can use to index depth0__sections
+            //Create zero-based depth that we can use to index depth0__nodes
             MSS(s.depth > 0);
             const auto depth0 = s.depth-1;
 
-            if (depth0 == depth0__sections.size())
+            if (depth0 == depth0__nodes.size())
             {
-                //The sections at this depth0 is not present yet
-                MSS(!depth0__sections[depth0-1]->empty());
-                auto &parent = depth0__sections[depth0-1]->back();
-                depth0__sections.push_back(&parent.childs);
+                //The nodes at this depth0 is not present yet
+                MSS(!depth0__nodes[depth0-1]->empty());
+                auto &parent = depth0__nodes[depth0-1]->back();
+                depth0__nodes.push_back(&parent.childs);
             }
-            MSS(depth0 < depth0__sections.size());
+            MSS(depth0 < depth0__nodes.size());
 
-            depth0__sections.resize(depth0+1);
-            depth0__sections[depth0]->push_back(s);
+            depth0__nodes.resize(depth0+1);
+            depth0__nodes[depth0]->push_back(s);
 
             if (depth0 == 0)
-                depth0__sections[depth0]->back().filepath = filepath;
+                depth0__nodes[depth0]->back().filepath = filepath;
         }
 
-        //Aggregate metadata for all root sections
-        for (auto &section: sections)
-            section.aggregate_metadata(nullptr);
+        //Aggregate metadata for all root nodes
+        for (auto &node: nodes)
+            node.aggregate_metadata(nullptr);
 
         MSS_END();
     }
 
-    //Rework the text depths to ensure child sections are exactly one level deeper
-    bool standardize_depths_(section::Sections &sections)
+    //Rework the text depths to ensure child nodes are exactly one level deeper
+    bool standardize_depths_(onto::Nodes &nodes)
     {
         MSS_BEGIN(bool);
 
         unsigned int level = 0u;
-        for (auto ix = 0u; ix < sections.size(); ++ix)
+        for (auto ix = 0u; ix < nodes.size(); ++ix)
         {
-            auto &s = sections[ix];
+            auto &s = nodes[ix];
             MSS(s.depth > 0);
 
             if (s.depth < level)
             {
-                //This section is more towards the root: OK
+                //This node is more towards the root: OK
             }
             else if (s.depth == level)
             {
-                //This section is at the same level: this is a child
+                //This node is at the same level: this is a child
             }
             else if (s.depth == level+1)
             {
-                //This section is one level deeper: this is a child
+                //This node is one level deeper: this is a child
                 ++level;
             }
             else if (s.depth > level+1)
             {
                 //We only accept a unit step when going deeper
-                //We will move all affected sections to the root
+                //We will move all affected nodes to the root
                 const unsigned int shift_count = s.depth-level-1;
-                for (auto ix2 = ix; ix2 < sections.size(); ++ix2)
+                for (auto ix2 = ix; ix2 < nodes.size(); ++ix2)
                 {
-                    auto &s2 = sections[ix2];
+                    auto &s2 = nodes[ix2];
                     if (s2.depth >= s.depth)
                     {
                         s2.depth -= shift_count;
-                        log::warning() << "Shifting section " << s2.text << " by " << shift_count << " deeper to level " << s2.depth << std::endl;
+                        log::warning() << "Shifting node " << s2.text << " by " << shift_count << " deeper to level " << s2.depth << std::endl;
                     }
                 }
                 ++level;

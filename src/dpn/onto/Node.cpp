@@ -1,9 +1,9 @@
-#include <dpn/section/Section.hpp>
+#include <dpn/onto/Node.hpp>
 #include <sstream>
 
-namespace dpn { namespace section { 
+namespace dpn { namespace onto { 
 
-    void Section::aggregate_metadata(const Section *parent)
+    void Node::aggregate_metadata(const Node *parent)
     {
         metadata.setup_aggregated();
 
@@ -21,7 +21,7 @@ namespace dpn { namespace section {
         metadata.finalize_aggregated();
     }
 
-    void Section::stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const
+    void Node::stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const
     {
         switch (stream_config.mode)
         {
@@ -107,7 +107,7 @@ namespace dpn { namespace section {
                 {
                     const std::string indent(level*2, ' ');
 
-                    os << indent << "[Section](type:" << type << ")(text:" << text << ")(depth:" << depth << ")";
+                    os << indent << "[Node](type:" << type << ")(text:" << text << ")(depth:" << depth << ")";
                     if (filepath)
                         os << "(filepath:" << *filepath << ")";
                     os << "{" << std::endl;
@@ -120,7 +120,7 @@ namespace dpn { namespace section {
         }
     }
 
-    bool Section::operator==(const Section &rhs) const
+    bool Node::operator==(const Node &rhs) const
     {
         if (text != rhs.text) return false;
         if (childs.size() != rhs.childs.size()) return false;
