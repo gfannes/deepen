@@ -6,8 +6,8 @@
 
 namespace dpn { namespace input { 
 
-    bool append_from_file(onto::Nodes &nodes, const std::string &filepath);
-    bool append_from_string(onto::Nodes &nodes, const std::string &content, const std::string &filepath);
+    bool load_from_file(onto::Node &file_node, const std::string &filepath);
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::string &filepath);
 
     //Privates
     bool standardize_depths_(onto::Nodes &nodes);

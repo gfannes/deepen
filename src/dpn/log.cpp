@@ -10,6 +10,12 @@ namespace dpn { namespace log {
         os << "Error: ";
         return os;
     }
+    std::ostream &internal_error()
+    {
+        auto &os = std::cout;
+        os << "!!InternalError!!: ";
+        return os;
+    }
     std::ostream &warning()
     {
         auto &os = std::cout;

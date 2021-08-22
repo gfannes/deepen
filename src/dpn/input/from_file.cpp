@@ -8,31 +8,32 @@
 
 namespace dpn { namespace input { 
 
-    bool append_from_file(onto::Nodes &nodes, const std::string &filepath)
+    bool load_from_file(onto::Node &file_node, const std::string &filepath)
     {
         MSS_BEGIN(bool);
 
         std::string content;
-        MSS(gubg::file::read(content, filepath));
+        MSS(gubg::file::read(content, filepath), log::error() << "Could not read content from `" << filepath << "`" << std::endl);
 
-        MSS(append_from_string(nodes, content, filepath));
+        MSS(load_from_string(file_node, content, filepath));
 
         MSS_END();
     }
 
-    bool append_from_string(onto::Nodes &nodes, const std::string &content, const std::string &filepath)
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::string &filepath)
     {
         MSS_BEGIN(bool);
+
+        file_node.type = onto::Type::File;
+        file_node.filepath = filepath;
 
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, content);
 
-        onto::Node *title_ptr = nullptr;
-        metadata::Metadata *metadata_ptr = nullptr;
+        onto::Node *title_ptr = &file_node;
         unsigned int empty_count = 0u;
 
         onto::Nodes title_nodes;
-        metadata::Metadata metadata;
 
         std::string line;
 
@@ -40,33 +41,30 @@ namespace dpn { namespace input {
 
         for (auto &raw_line: lines)
         {
-            if (raw_line.starts_with("---"))
-            {
-                //Switch from reading Node data to reading Metadata
-                metadata_ptr = &metadata;
-                title_ptr = nullptr;
-                continue;
-            }
+            assert(!!title_ptr);
+
+            gubg::Strange strange{raw_line};
+            gubg::Strange tmp;
 
             auto process_empty_count = [&](){
-                if (title_ptr)
+                MSS_BEGIN(bool);
+                //Add the collected empty lines
+                for (auto ix = 0u; ix < empty_count; ++ix)
                 {
-                    //Add the collected empty lines
-                    for (auto ix = 0u; ix < empty_count; ++ix)
-                        title_ptr->childs.emplace_back(onto::Type::Line);
-                    empty_count = 0u;
+                    MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
+                    title_ptr->childs.emplace_back(onto::Type::Line);
                 }
+                empty_count = 0u;
+                MSS_END();
             };
 
+
             onto::Node *node_ptr = nullptr;
-            if (metadata_ptr)
-            {
-            }
-            else if (const auto pair = util::lead_count('#', ' ', raw_line); pair.first > 0)
+            if (const auto pair = util::lead_count('#', ' ', raw_line); pair.first > 0)
             {
                 //We found a Title
 
-                process_empty_count();
+                MSS(process_empty_count());
 
                 title_nodes.emplace_back(onto::Type::Title);
                 title_ptr = &title_nodes.back();
@@ -74,24 +72,9 @@ namespace dpn { namespace input {
                 title_ptr->depth = pair.first;
                 line = raw_line.substr(pair.first+pair.second);
             }
-            else if (raw_line.substr(0, 2) == "@[")
-            {
-                //We found a Link
-
-                if (title_ptr)
-                {
-                    title_ptr->childs.emplace_back(onto::Type::Link);
-                    node_ptr = &title_ptr->childs.back();
-                    line = raw_line.substr(1, std::string::npos);
-                }
-            }
             else
             {
-                if (!title_ptr)
-                {
-                    log::warning() << "Dropping raw_line `" << raw_line << "`, there is no Node to add it to" << std::endl;
-                    continue;
-                }
+                MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
 
                 if (raw_line.empty())
                 {
@@ -99,7 +82,7 @@ namespace dpn { namespace input {
                 }
                 else
                 {
-                    process_empty_count();
+                    MSS(process_empty_count());
 
                     //Add the actual raw_line
                     title_ptr->childs.emplace_back(onto::Type::Line);
@@ -113,9 +96,9 @@ namespace dpn { namespace input {
                 metadata::split(node_ptr->text, metadata_items, line);
                 node_ptr->metadata.setup(metadata_items);
 
-                if (node_ptr->type == onto::Type::Link)
+                if (node_ptr->type == onto::Type::File)
                 {
-                    //TODO: extract link text and recurse parsing the file for Type::Link
+                    //TODO: extract link text and recurse parsing the file for Type::File
                 }
             }
         }
@@ -124,7 +107,7 @@ namespace dpn { namespace input {
 
         //Append nodes from title_nodes to nodes
         //but nest them according to depth
-        std::vector<onto::Nodes *> depth0__nodes = {&nodes};
+        std::vector<onto::Nodes *> depth0__nodes = {&file_node.childs};
         for (const auto &s: title_nodes)
         {
             //Create zero-based depth that we can use to index depth0__nodes
@@ -142,14 +125,7 @@ namespace dpn { namespace input {
 
             depth0__nodes.resize(depth0+1);
             depth0__nodes[depth0]->push_back(s);
-
-            if (depth0 == 0)
-                depth0__nodes[depth0]->back().filepath = filepath;
         }
-
-        //Aggregate metadata for all root nodes
-        for (auto &node: nodes)
-            node.aggregate_metadata(nullptr);
 
         MSS_END();
     }

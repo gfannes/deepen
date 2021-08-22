@@ -10,11 +10,19 @@ namespace dpn { namespace metadata {
 
         clear();
 
-        gubg::Strange content;
-        strange.pop_until(content, ' ') || strange.pop_until(content, '@') || strange.pop_all(content);
+        if (strange.pop_bracket(key, "[]"))
+        {
+            is_link = true;
+            strange.pop_bracket(value, "()");
+        }
+        else
+        {
+            gubg::Strange content;
+            strange.pop_until(content, ' ') || strange.pop_until(content, '@') || strange.pop_all(content);
 
-        content.pop_until(key, ':');
-        content.pop_all(value);
+            content.pop_until(key, ':');
+            content.pop_all(value);
+        }
 
         return true;
     }
@@ -22,9 +30,16 @@ namespace dpn { namespace metadata {
     void Item::stream(std::ostream &os) const
     {
         os << '@';
-        if (!key.empty())
-            os << key << ':';
-        os << value;
+        if (is_link)
+        {
+            os << "[" << key << "](" << value << ")";
+        }
+        else
+        {
+            if (!key.empty())
+                os << key << ':';
+            os << value;
+        }
     }
 
     void split(std::string &text, std::vector<Item> &items, const std::string &line)

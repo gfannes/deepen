@@ -5,6 +5,7 @@
 #include <dpn/metadata/Metadata.hpp>
 #include <string>
 #include <vector>
+#include <map>
 #include <optional>
 #include <ostream>
 
@@ -17,9 +18,9 @@ namespace dpn { namespace onto {
 
         std::string text;
         unsigned int depth = 0;
+        std::string filepath;//Only used for Type::File
 
         std::vector<Node> childs;
-        std::optional<std::string> filepath;
         metadata::Metadata metadata;
 
         Node() {}
@@ -27,15 +28,26 @@ namespace dpn { namespace onto {
 
         void aggregate_metadata(const Node *parent);
 
+        using Filepath__Node = std::map<std::string, onto::Node>;
+        bool merge_linkpaths(unsigned int &count, const Filepath__Node &filepath__node);
+        bool aggregate_linkpaths(const std::map<std::string, onto::Node> &filepath__node);
+
+        template <typename Ftor>
+        void each_linkpath(Ftor &&ftor) const
+        {
+            if (metadata.input.linkpath)
+                ftor(*metadata.input.linkpath);
+            for (const auto &child: childs)
+                child.each_linkpath(ftor);
+        }
+
         struct StreamConfig
         {
             enum Mode {Original, Export, Naft};
             Mode mode = Naft;
+            bool include_aggregates = false;
         };
         void stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const;
-
-        bool operator==(const Node &rhs) const;
-        bool operator!=(const Node &rhs) const {return !operator==(rhs);}
 
     private:
     };
@@ -48,6 +60,7 @@ namespace dpn { namespace onto {
     }
 
     using Nodes = std::vector<Node>;
+    using Filepath__Node = std::map<std::string, onto::Node>;
 
 } }
 

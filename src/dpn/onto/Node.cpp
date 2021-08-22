@@ -21,62 +21,132 @@ namespace dpn { namespace onto {
         metadata.finalize_aggregated();
     }
 
+    bool Node::merge_linkpaths(unsigned int &count, const Filepath__Node &filepath__node)
+    {
+        MSS_BEGIN(bool);
+
+        auto merge = [&](const auto &src){
+            const auto count_before = metadata.linkpaths.size();
+            metadata.linkpaths.insert(src.begin(), src.end());
+            const auto count_after = metadata.linkpaths.size();
+
+            count += count_after - count_before;
+        };
+
+        for (auto &child: childs)
+        {
+            MSS(child.merge_linkpaths(count, filepath__node));
+
+            merge(child.metadata.linkpaths);
+        }
+
+        const auto copy_linkpaths = metadata.linkpaths;
+        for (const auto &linkpath: copy_linkpaths)
+        {
+            const auto p = filepath__node.find(linkpath);
+            MSS(p != filepath__node.end(), log::internal_error() << "Could not find node `" << linkpath << "`" << std::endl);
+            const auto &linknode = p->second;
+
+            merge(linknode.metadata.linkpaths);
+        }
+
+        MSS_END();
+    }
+
+    bool Node::aggregate_linkpaths(const std::map<std::string, onto::Node> &filepath__node)
+    {
+        MSS_BEGIN(bool);
+
+        auto get_agg_local = [&](const auto &filepath) -> const metadata::Aggregated *
+        {
+            const auto p = filepath__node.find(filepath);
+            if (p == filepath__node.end())
+                return nullptr;
+            return &p->second.metadata.agg_local;
+        };
+        MSS(metadata.aggregate_global(get_agg_local));
+
+        for (auto &child: childs)
+        {
+            MSS(child.aggregate_linkpaths(filepath__node));
+        }
+
+        MSS_END();
+    }
+
     void Node::stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const
     {
         switch (stream_config.mode)
         {
             case StreamConfig::Original:
                 {
+                    bool do_stream = true;
                     switch (type)
                     {
                         case Type::Title: os << std::string(depth, '#') << ' '; break;
                         case Type::Line: break;
+                        default: do_stream = false; break;
                     }
-                    os << text;
 
-                    std::set<metadata::Item> metadata_items;
-                    //Update the aggregated metadata items into a new std::set
+                    if (do_stream)
                     {
-                        if (metadata.aggregated_opt && type == Type::Title)
+                        bool add_space = false;
+                        auto stream = [&](const char *prefix, const auto &e){
+                            if (add_space)
+                                os << ' ';
+                            add_space = true;
+                            os << prefix << e;
+                        };
+
+                        if (!text.empty())
+                            stream("", text);
+
+                        if (metadata.link)
+                            stream("", *metadata.link);
+
+                        std::set<metadata::Item> metadata_items;
+                        //Update the aggregated metadata items into a new std::set
                         {
-                            const auto &agg = *metadata.aggregated_opt;
-                            std::ostringstream oss;
+                            if (stream_config.include_aggregates)
+                            {
+                                const auto &agg = metadata.agg_global;
+                                if (type == Type::Title && agg.total_effort.minutes > 0)
+                                {
+                                    std::ostringstream oss;
 
-                            oss.str(""); oss << agg.pct_done() << '%';
-                            metadata_items.insert(metadata::Item("C", oss.str()));
+                                    oss.str(""); oss << agg.pct_done() << '%';
+                                    metadata_items.insert(metadata::Item("C", oss.str()));
 
-                            oss.str(""); oss << agg.total_effort;
-                            metadata_items.insert(metadata::Item("E", oss.str()));
+                                    oss.str(""); oss << agg.total_effort;
+                                    metadata_items.insert(metadata::Item("E", oss.str()));
 
-                            oss.str(""); oss << agg.minimal_status;
-                            metadata_items.insert(metadata::Item("S", oss.str()));
+                                    oss.str(""); oss << agg.minimal_status;
+                                    metadata_items.insert(metadata::Item("S", oss.str()));
 
-                            oss.str(""); oss << agg.total_todo;
-                            metadata_items.insert(metadata::Item("T", oss.str()));
+                                    oss.str(""); oss << agg.total_todo();
+                                    metadata_items.insert(metadata::Item("T", oss.str()));
+                                }
+                            }
+                            for (const auto &item: metadata.items)
+                            {
+                                if (false) {}
+                                else if (item.key == "C") {}
+                                else if (item.key == "E") {}
+                                else if (item.key == "S") {}
+                                else if (item.key == "T") {}
+                                else metadata_items.insert(item);
+                            }
                         }
-                        for (const auto &item: metadata.items)
-                        {
-                            if (false) {}
-                            else if (item.key == "C") {}
-                            else if (item.key == "E") {}
-                            else if (item.key == "S") {}
-                            else if (item.key == "T") {}
-                            else metadata_items.insert(item);
-                        }
-                    }
 
-                    for (const auto &item: metadata_items)
-                        os << ' ' << item;
-                    if (metadata.input_opt)
-                    {
-                        const auto &input = *metadata.input_opt;
-                        if (input.effort.minutes > 0.0)
-                            os << " @" << input.effort;
-                        if (input.status != metadata::Status{metadata::State::Requirement, false})
-                            os << " @" << input.status;
-                    }
+                        for (const auto &item: metadata_items)
+                            stream("", item);
+                        if (metadata.input.effort)
+                            stream("@", *metadata.input.effort);
+                        if (metadata.input.status)
+                            stream("@", *metadata.input.status);
 
-                    os << std::endl;
+                        os << std::endl;
+                    }
 
                     for (const auto &child: childs)
                         child.stream(os, level+1, stream_config);
@@ -88,10 +158,10 @@ namespace dpn { namespace onto {
                 {
                     case Type::Title:
                         os << std::string(depth, '#') << ' ' << text;
-                        if (metadata.aggregated_opt)
+                        if (metadata.agg_global.total_effort.minutes > 0)
                         {
-                            const auto &agg = *metadata.aggregated_opt;
-                            os << " (" << agg.total_todo << "/" << agg.total_effort << ", " << agg.pct_done() << "%)";
+                            const auto &agg = metadata.agg_global;
+                            os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << "%)";
                         }
                         os << std::endl;
                         break;
@@ -107,10 +177,7 @@ namespace dpn { namespace onto {
                 {
                     const std::string indent(level*2, ' ');
 
-                    os << indent << "[Node](type:" << type << ")(text:" << text << ")(depth:" << depth << ")";
-                    if (filepath)
-                        os << "(filepath:" << *filepath << ")";
-                    os << "{" << std::endl;
+                    os << indent << "[Node](type:" << type << ")(text:" << text << ")(depth:" << depth << ")(filepath:" << filepath << "){" << std::endl;
                     metadata.stream(os, level+1);
                     for (const auto &child: childs)
                         child.stream(os, level+1, stream_config);
@@ -118,17 +185,6 @@ namespace dpn { namespace onto {
                 }
                 break;
         }
-    }
-
-    bool Node::operator==(const Node &rhs) const
-    {
-        if (text != rhs.text) return false;
-        if (childs.size() != rhs.childs.size()) return false;
-        for (auto ix = 0u; ix < childs.size(); ++ix)
-            if (childs[ix] != rhs.childs[ix]) return false;
-        if (!!filepath != !!rhs.filepath) return false;
-        if (!!filepath && *filepath != *rhs.filepath) return false;
-        return true;
     }
 
 } }

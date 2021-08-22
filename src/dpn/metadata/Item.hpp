@@ -13,6 +13,7 @@ namespace dpn { namespace metadata {
     public:
         std::string key;
         std::string value;
+        bool is_link = false;
 
         Item() {}
         Item(const std::string &value): value(value) {}

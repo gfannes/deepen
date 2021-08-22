@@ -6,24 +6,23 @@ namespace dpn { namespace metadata {
     {
         clear();
 
-        auto goc_input = [&]() -> Input& {
-            if (!input_opt)
-                input_opt.emplace();
-            return *input_opt;
-        };
-
         Duration effort;
         Status status;
         for (const auto &item: items)
         {
-            if (item.key.empty())
+            if (item.is_link)
+            {
+                link = item;
+                input.linkpath = item.value;
+            }
+            else if (item.key.empty())
             {
                 gubg::Strange strange{item.value};
                 if (false) {}
                 else if (effort.parse(strange))
-                    goc_input().effort = effort;
+                    input.effort = effort;
                 else if (status.parse(strange))
-                    goc_input().status = status;
+                    input.status = status;
                 else
                     this->items.insert(item);
             }
@@ -34,48 +33,27 @@ namespace dpn { namespace metadata {
 
     void Metadata::setup_aggregated()
     {
-        if (input_opt)
-        {
-            const auto &input = *input_opt;
-            aggregated_opt.emplace();
-            auto &aggregated = *aggregated_opt;
-            aggregated.total_effort = input.effort;
-            aggregated.total_done.minutes = input.effort.minutes*input.status.fraction_done();
-            aggregated.minimal_status = input.status;
-        }
+        if (input.effort)
+            agg_local.total_effort = *input.effort;
+        if (input.linkpath)
+            linkpaths.insert(*input.linkpath);
     }
     void Metadata::aggregate_from_parent(const Metadata &parent)
     {
+        //Take status from input, if present, or from agg_local parent status
+        agg_local.status = (input.status ? *input.status : parent.agg_local.status);
+        agg_local.minimal_status = agg_local.status;
+
+        agg_local.total_done.minutes = agg_local.total_effort.minutes*agg_local.status.fraction_done();
     }
     void Metadata::aggregate_from_child(const Metadata &child)
     {
-        if (child.aggregated_opt)
-        {
-            const auto &child_agg = *child.aggregated_opt;
-            if (!aggregated_opt)
-            {
-                aggregated_opt = child_agg;
-            }
-            else
-            {
-                auto &my_agg = *aggregated_opt;
-                my_agg.total_effort += child_agg.total_effort;
-                my_agg.total_done += child_agg.total_done;
-                my_agg.minimal_status = Status::minimum(my_agg.minimal_status, child_agg.minimal_status);
-            }
-        }
+        agg_local.total_effort += child.agg_local.total_effort;
+        agg_local.total_done += child.agg_local.total_done;
+        agg_local.minimal_status = Status::minimum(agg_local.minimal_status, child.agg_local.minimal_status);
     }
     void Metadata::finalize_aggregated()
     {
-        if (aggregated_opt)
-        {
-            auto &aggregated = *aggregated_opt;
-            aggregated.total_todo.minutes = aggregated.total_effort.minutes-aggregated.total_done.minutes;
-            if (aggregated.total_effort.minutes > 0)
-                aggregated.fraction_done = aggregated.total_done.minutes/aggregated.total_effort.minutes;
-            else
-                aggregated.fraction_done = 1.0;
-        }
     }
 
     void Metadata::stream(std::ostream &os, unsigned int level) const
@@ -88,17 +66,33 @@ namespace dpn { namespace metadata {
                 os << indent << "[metadata::Item](key:" << item.key << ")(value:" << item.value << ")" << std::endl;
         }
 
-        if (input_opt)
+        if (input.effort || input.status || input.linkpath)
         {
-            const auto &input = *input_opt;
-            os << indent << "[metadata::Input](effort:" << input.effort << ")(status:" << input.status << ")" << std::endl;
+            os << indent << "[metadata::Input]";
+            if (input.effort)
+                os << "(effort:" << *input.effort << ")";
+            if (input.status)
+                os << "(status:" << *input.status << ")";
+            if (input.linkpath)
+                os << "(linkpath:" << *input.linkpath << ")";
+            os << std::endl;
         }
 
-        if (aggregated_opt)
-        {
-            const auto &agg = *aggregated_opt;
-            os << indent << "[metadata::Aggregated](total_effort:" << agg.total_effort << ")(total_done:" << agg.total_done << ")(total_todo:" << agg.total_todo << ")(pct_done:" << agg.pct_done() << "%)(minimal_status:" << agg.minimal_status << ")" << std::endl;
-        }
+        os << indent << "[Links]{" << std::endl;
+        for (const auto &linkpath: linkpaths)
+            os << indent << "  " << "[Path](" << linkpath << ")" << std::endl;
+        os << indent << "}" << std::endl;
+
+        auto stream_agg = [&](const char *name, const auto &agg){
+            os << indent << "[" << name << "]";
+            os << "(total_effort:" << agg.total_effort << ")";
+            os << "(total_done:" << agg.total_done << ")";
+            os << "(status:" << agg.status << ")";
+            os << "(minimal_status:" << agg.minimal_status << ")";
+            os << std::endl;
+        };
+        stream_agg("agg_local", agg_local);
+        stream_agg("agg_global", agg_global);
     }
 
 } }

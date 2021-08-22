@@ -4,6 +4,7 @@
 #include <dpn/enums.hpp>
 #include <string>
 #include <optional>
+#include <list>
 
 namespace dpn { 
 
@@ -16,8 +17,9 @@ namespace dpn {
         int verbosity_level = 0;
 
         std::optional<Operation> operation_opt;
+        bool include_aggregates = false;
 
-        std::string input_filepath;
+        std::list<std::string> input_filepaths;
         std::string output_filepath;
 
         std::optional<std::string> command;

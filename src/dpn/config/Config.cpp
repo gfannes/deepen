@@ -9,7 +9,7 @@ namespace dpn { namespace config {
 
     bool Config::load_from_file(const std::string &filepath)
     {
-        MSS_BEGIN(bool, "");
+        MSS_BEGIN(bool);
 
         std::string content;
         MSS(gubg::file::read(content, filepath), log::error() << "Could not read from config file `" << filepath << "`" << std::endl);
