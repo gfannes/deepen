@@ -1,5 +1,6 @@
 #include <dpn/Options.hpp>
 #include <dpn/log.hpp>
+#include <gubg/cli/Range.hpp>
 #include <gubg/mss.hpp>
 
 namespace dpn { 
@@ -8,40 +9,23 @@ namespace dpn {
     {
         MSS_BEGIN(bool);
 
-        unsigned int arg_ix = 0;
-        auto pop_str = [&](std::string &str)
-        {
-            if (arg_ix >= argc) return false;
-            str = argv[arg_ix++];
-            return true;
-        };
+        gubg::cli::Range argr{argc, argv};
 
-        auto pop_num = [&](auto &num)
-        {
-            std::string str;
-            if (!pop_str(str)) return false;
+        MSS(argr.pop(exe_name), log::error() << "Could not find the executable name" << std::endl);
 
-            try { num = std::stol(str); }
-            catch (...) { return (log::error() << "Could not convert `" << str << "` to a number" << std::endl, false); }
-
-            return true;
-        };
-
-        MSS(pop_str(exe_name), log::error() << "Could not find the executable name" << std::endl);
-
-        for (std::string arg; pop_str(arg);)
+        for (std::string arg; argr.pop(arg);)
         {
             auto is = [&](const char *sh, const char *lh){return arg == sh || arg == lh;};
 
             if (false) {}
             else if (is("-h", "--help")) { print_help = true; }
-            else if (is("-V", "--verbose")) { MSS(pop_num(verbosity_level), log::error() << "Expected a verbosity level" << std::endl); }
+            else if (is("-V", "--verbose")) { MSS(argr.pop(verbosity_level), log::error() << "Expected a valid verbosity level" << std::endl); }
             else if (is("-u", "--update")) { operation_opt = Operation::Update; include_aggregates = false; }
             else if (is("-U", "--Update")) { operation_opt = Operation::Update; include_aggregates = true; }
             else if (is("-e", "--export")) { operation_opt = Operation::Export; }
-            else if (is("-i", "--input")) { std::string tmp; MSS(pop_str(tmp), log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp); }
-            else if (is("-o", "--output")) { MSS(pop_str(output_filepath), log::error() << "Expected an output filepath" << std::endl); }
-            else if (is("-c", "--command")) { command.emplace(); MSS(pop_str(*command), log::error() << "Expected a command string" << std::endl); }
+            else if (is("-i", "--input")) { std::string tmp; MSS(argr.pop(tmp), log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp); }
+            else if (is("-o", "--output")) { MSS(argr.pop(output_filepath), log::error() << "Expected an output filepath" << std::endl); }
+            else if (is("-c", "--command")) { MSS(argr.pop(command), log::error() << "Expected a command string" << std::endl); }
             else { log::error() << "Unknown CLI argument `" << arg << "`" << std::endl; }
         }
 
