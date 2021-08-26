@@ -8,7 +8,7 @@
 
 namespace dpn { namespace input { 
 
-    bool load_from_file(onto::Node &file_node, const std::string &filepath)
+    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath)
     {
         MSS_BEGIN(bool);
 
@@ -20,7 +20,7 @@ namespace dpn { namespace input {
         MSS_END();
     }
 
-    bool load_from_string(onto::Node &file_node, const std::string &content, const std::string &filepath)
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath)
     {
         MSS_BEGIN(bool);
 
@@ -94,7 +94,7 @@ namespace dpn { namespace input {
             if (node_ptr)
             {
                 metadata::split(node_ptr->text, metadata_items, line);
-                node_ptr->metadata.setup(metadata_items);
+                node_ptr->metadata.setup(metadata_items, filepath.parent_path());
 
                 if (node_ptr->type == onto::Type::File)
                 {

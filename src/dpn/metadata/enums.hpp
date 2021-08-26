@@ -3,9 +3,14 @@
 
 namespace dpn { namespace metadata { 
 
-    enum class State
+    enum class Flow
     {
         Requirement, Design, Starting, Implementation, Validation,
+    };
+
+    enum class State
+    {
+        Active, Cancelled,
     };
 
 } }

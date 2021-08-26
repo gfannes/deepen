@@ -10,6 +10,7 @@
 #include <set>
 #include <optional>
 #include <cmath>
+#include <filesystem>
 
 namespace dpn { namespace metadata { 
 
@@ -17,7 +18,8 @@ namespace dpn { namespace metadata {
     {
         std::optional<Duration> effort;
         std::optional<Status> status;
-        std::optional<std::string> linkpath;
+        std::optional<std::string> linkpath_rel;//Holds the path as specified in the []() link
+        std::optional<std::filesystem::path> linkpath_abs;//Holds the absolute version, used for finding Nodes etc
     };
 
     struct Aggregated
@@ -39,12 +41,12 @@ namespace dpn { namespace metadata {
         std::set<Item> items;
         Input input;
         Aggregated agg_local;
-        std::set<std::string> linkpaths;
+        std::set<std::filesystem::path> linkpaths;
         Aggregated agg_global;
 
         void clear() {*this = Metadata{};}
 
-        void setup(const std::vector<Item> &items);
+        void setup(const std::vector<Item> &items, const std::filesystem::path &cwd);
 
         void setup_aggregated();
         void aggregate_from_parent(const Metadata &parent);

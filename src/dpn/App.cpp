@@ -75,63 +75,67 @@ namespace dpn {
         {
             MSS(!options_.input_filepaths.empty());
 
-            onto::Filepath__Node filepath__node;
+            onto::AbsFilepath__Node abs_filepath__node;
 
             onto::Node root{onto::Type::Root};
 
-            using Filepaths = std::set<std::string>;
-            Filepaths filepaths;
+            using AbsFilepaths = std::set<std::filesystem::path>;
+            AbsFilepaths abs_filepaths;
             for (const auto &filepath: options_.input_filepaths)
             {
                 root.childs.emplace_back(onto::Type::Link);
                 auto &link = root.childs.back();
-                link.metadata.input.linkpath = filepath;
-                filepaths.insert(filepath);
+                link.metadata.input.linkpath_rel = filepath;
+                const auto filepath_abs = std::filesystem::absolute(filepath);
+                link.metadata.input.linkpath_abs = filepath_abs;
+                abs_filepaths.insert(filepath_abs);
             }
 
             //Load all the nodes with a metadata.input.linkpath from file
-            while (filepaths.size() != filepath__node.size())
+            while (abs_filepaths.size() != abs_filepath__node.size())
             {
-                for (const auto &filepath: filepaths)
-                    if (filepath__node.count(filepath) == 0)
+                const auto copy_abs_filepaths = abs_filepaths;
+                for (const auto &abs_filepath: copy_abs_filepaths)
+                    if (abs_filepath__node.count(abs_filepath) == 0)
                     {
-                        auto &node = filepath__node[filepath];
-                        MSS(input::load_from_file(node, filepath));
+                        auto &node = abs_filepath__node[abs_filepath];
+                        log::os(1) << "Loading `" << abs_filepath << "`" << std::endl;
+                        MSS(input::load_from_file(node, abs_filepath));
 
-                        auto insert_into_filepaths = [&](const std::string &filepath){
-                            filepaths.insert(filepath);
+                        auto insert_into_abs_filepaths = [&](const std::string &new_abs_filepath){
+                            abs_filepaths.insert(new_abs_filepath);
                         };
-                        node.each_linkpath(insert_into_filepaths);
+                        node.each_abs_linkpath(insert_into_abs_filepaths);
                     }
             }
 
             //Aggregate metadata
             root.aggregate_metadata(nullptr);
-            for (auto &[_, node]: filepath__node)
+            for (auto &[_, node]: abs_filepath__node)
                 node.aggregate_metadata(nullptr);
 
             //Merge linkpaths until stable
             while (true)
             {
                 unsigned int count = 0u;
-                root.merge_linkpaths(count, filepath__node);
-                for (auto &[_, node]: filepath__node)
-                    node.merge_linkpaths(count, filepath__node);
+                root.merge_linkpaths(count, abs_filepath__node);
+                for (auto &[_, node]: abs_filepath__node)
+                    node.merge_linkpaths(count, abs_filepath__node);
                 if (count == 0)
                     break;
             }
 
-            MSS(root.aggregate_linkpaths(filepath__node));
-            for (auto &[_, node]: filepath__node)
+            MSS(root.aggregate_linkpaths(abs_filepath__node));
+            for (auto &[_, node]: abs_filepath__node)
             {
-                MSS(node.aggregate_linkpaths(filepath__node));
+                MSS(node.aggregate_linkpaths(abs_filepath__node));
             }
 
-            std::cout << root;
-            for (const auto &[filepath, node]: filepath__node)
+            log::os(2) << root;
+            for (const auto &[abs_filepath, node]: abs_filepath__node)
             {
-                std::cout << std::endl << filepath << std::endl;
-                std::cout << node;
+                log::os(2) << std::endl << abs_filepath << std::endl;
+                log::os(2) << node;
             }
 
             if (options_.operation_opt)
@@ -139,9 +143,9 @@ namespace dpn {
                 switch (*options_.operation_opt)
                 {
                     case Operation::Update:
-                        for (const auto &[filepath, node]: filepath__node)
+                        for (const auto &[abs_filepath, node]: abs_filepath__node)
                         {
-                            std::ofstream fo{filepath};
+                            std::ofstream fo{abs_filepath};
                             onto::Node::StreamConfig stream_config;
                             stream_config.mode = onto::Node::StreamConfig::Original;
                             stream_config.include_aggregates = options_.include_aggregates;

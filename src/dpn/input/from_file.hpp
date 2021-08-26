@@ -3,11 +3,12 @@
 
 #include <dpn/onto/Node.hpp>
 #include <string>
+#include <filesystem>
 
 namespace dpn { namespace input { 
 
-    bool load_from_file(onto::Node &file_node, const std::string &filepath);
-    bool load_from_string(onto::Node &file_node, const std::string &content, const std::string &filepath);
+    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath);
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath);
 
     //Privates
     bool standardize_depths_(onto::Nodes &nodes);

@@ -2,7 +2,7 @@
 
 namespace dpn { namespace metadata { 
 
-    void Metadata::setup(const std::vector<Item> &items)
+    void Metadata::setup(const std::vector<Item> &items, const std::filesystem::path &cwd)
     {
         clear();
 
@@ -13,7 +13,8 @@ namespace dpn { namespace metadata {
             if (item.is_link)
             {
                 link = item;
-                input.linkpath = item.value;
+                input.linkpath_rel = item.value;
+                input.linkpath_abs = (cwd / item.value).lexically_normal();
             }
             else if (item.key.empty())
             {
@@ -34,9 +35,12 @@ namespace dpn { namespace metadata {
     void Metadata::setup_aggregated()
     {
         if (input.effort)
-            agg_local.total_effort = *input.effort;
-        if (input.linkpath)
-            linkpaths.insert(*input.linkpath);
+        {
+            const auto fraction_effort = (input.status ? input.status->fraction_effort() : 1.0);
+            agg_local.total_effort.minutes = input.effort->minutes * fraction_effort;
+        }
+        if (input.linkpath_abs)
+            linkpaths.insert(*input.linkpath_abs);
     }
     void Metadata::aggregate_from_parent(const Metadata &parent)
     {
@@ -66,21 +70,21 @@ namespace dpn { namespace metadata {
                 os << indent << "[metadata::Item](key:" << item.key << ")(value:" << item.value << ")" << std::endl;
         }
 
-        if (input.effort || input.status || input.linkpath)
+        if (input.effort || input.status || input.linkpath_rel)
         {
             os << indent << "[metadata::Input]";
             if (input.effort)
                 os << "(effort:" << *input.effort << ")";
             if (input.status)
                 os << "(status:" << *input.status << ")";
-            if (input.linkpath)
-                os << "(linkpath:" << *input.linkpath << ")";
+            if (input.linkpath_rel)
+                os << "(linkpath_rel:" << *input.linkpath_rel << ")";
             os << std::endl;
         }
 
         os << indent << "[Links]{" << std::endl;
         for (const auto &linkpath: linkpaths)
-            os << indent << "  " << "[Path](" << linkpath << ")" << std::endl;
+            os << indent << "  " << "[Path](" << linkpath.string() << ")" << std::endl;
         os << indent << "}" << std::endl;
 
         auto stream_agg = [&](const char *name, const auto &agg){

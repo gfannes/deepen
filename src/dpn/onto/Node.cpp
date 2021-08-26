@@ -21,7 +21,7 @@ namespace dpn { namespace onto {
         metadata.finalize_aggregated();
     }
 
-    bool Node::merge_linkpaths(unsigned int &count, const Filepath__Node &filepath__node)
+    bool Node::merge_linkpaths(unsigned int &count, const AbsFilepath__Node &abs_filepath__node)
     {
         MSS_BEGIN(bool);
 
@@ -35,7 +35,7 @@ namespace dpn { namespace onto {
 
         for (auto &child: childs)
         {
-            MSS(child.merge_linkpaths(count, filepath__node));
+            MSS(child.merge_linkpaths(count, abs_filepath__node));
 
             merge(child.metadata.linkpaths);
         }
@@ -43,8 +43,8 @@ namespace dpn { namespace onto {
         const auto copy_linkpaths = metadata.linkpaths;
         for (const auto &linkpath: copy_linkpaths)
         {
-            const auto p = filepath__node.find(linkpath);
-            MSS(p != filepath__node.end(), log::internal_error() << "Could not find node `" << linkpath << "`" << std::endl);
+            const auto p = abs_filepath__node.find(linkpath);
+            MSS(p != abs_filepath__node.end(), log::internal_error() << "Could not find node `" << linkpath << "`" << std::endl);
             const auto &linknode = p->second;
 
             merge(linknode.metadata.linkpaths);
@@ -53,14 +53,14 @@ namespace dpn { namespace onto {
         MSS_END();
     }
 
-    bool Node::aggregate_linkpaths(const std::map<std::string, onto::Node> &filepath__node)
+    bool Node::aggregate_linkpaths(const AbsFilepath__Node &abs_filepath__node)
     {
         MSS_BEGIN(bool);
 
         auto get_agg_local = [&](const auto &filepath) -> const metadata::Aggregated *
         {
-            const auto p = filepath__node.find(filepath);
-            if (p == filepath__node.end())
+            const auto p = abs_filepath__node.find(filepath);
+            if (p == abs_filepath__node.end())
                 return nullptr;
             return &p->second.metadata.agg_local;
         };
@@ -68,7 +68,7 @@ namespace dpn { namespace onto {
 
         for (auto &child: childs)
         {
-            MSS(child.aggregate_linkpaths(filepath__node));
+            MSS(child.aggregate_linkpaths(abs_filepath__node));
         }
 
         MSS_END();
@@ -120,8 +120,11 @@ namespace dpn { namespace onto {
                                     oss.str(""); oss << agg.total_effort;
                                     metadata_items.insert(metadata::Item("E", oss.str()));
 
-                                    oss.str(""); oss << agg.minimal_status;
-                                    metadata_items.insert(metadata::Item("S", oss.str()));
+                                    if (false)
+                                    {
+                                        oss.str(""); oss << agg.minimal_status;
+                                        metadata_items.insert(metadata::Item("S", oss.str()));
+                                    }
 
                                     oss.str(""); oss << agg.total_todo();
                                     metadata_items.insert(metadata::Item("T", oss.str()));
@@ -177,7 +180,7 @@ namespace dpn { namespace onto {
                 {
                     const std::string indent(level*2, ' ');
 
-                    os << indent << "[Node](type:" << type << ")(text:" << text << ")(depth:" << depth << ")(filepath:" << filepath << "){" << std::endl;
+                    os << indent << "[Node](type:" << type << ")(text:" << text << ")(depth:" << depth << ")(filepath:" << filepath.string() << "){" << std::endl;
                     metadata.stream(os, level+1);
                     for (const auto &child: childs)
                         child.stream(os, level+1, stream_config);

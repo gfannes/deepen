@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <optional>
+#include <filesystem>
 #include <ostream>
 
 namespace dpn { namespace onto { 
@@ -18,7 +19,7 @@ namespace dpn { namespace onto {
 
         std::string text;
         unsigned int depth = 0;
-        std::string filepath;//Only used for Type::File
+        std::filesystem::path filepath;//Only used for Type::File
 
         std::vector<Node> childs;
         metadata::Metadata metadata;
@@ -28,17 +29,17 @@ namespace dpn { namespace onto {
 
         void aggregate_metadata(const Node *parent);
 
-        using Filepath__Node = std::map<std::string, onto::Node>;
-        bool merge_linkpaths(unsigned int &count, const Filepath__Node &filepath__node);
-        bool aggregate_linkpaths(const std::map<std::string, onto::Node> &filepath__node);
+        using AbsFilepath__Node = std::map<std::filesystem::path, onto::Node>;
+        bool merge_linkpaths(unsigned int &count, const AbsFilepath__Node &abs_filepath__node);
+        bool aggregate_linkpaths(const AbsFilepath__Node &abs_filepath__node);
 
         template <typename Ftor>
-        void each_linkpath(Ftor &&ftor) const
+        void each_abs_linkpath(Ftor &&ftor) const
         {
-            if (metadata.input.linkpath)
-                ftor(*metadata.input.linkpath);
+            if (metadata.input.linkpath_abs)
+                ftor(*metadata.input.linkpath_abs);
             for (const auto &child: childs)
-                child.each_linkpath(ftor);
+                child.each_abs_linkpath(ftor);
         }
 
         struct StreamConfig
@@ -60,7 +61,7 @@ namespace dpn { namespace onto {
     }
 
     using Nodes = std::vector<Node>;
-    using Filepath__Node = std::map<std::string, onto::Node>;
+    using AbsFilepath__Node = std::map<std::filesystem::path, onto::Node>;
 
 } }
 

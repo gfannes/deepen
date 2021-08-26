@@ -10,13 +10,15 @@ namespace dpn { namespace metadata {
     class Status
     {
     public:
-        State state = State::Requirement;
+        Flow flow = Flow::Requirement;
         bool done = false;
+        State state = State::Active;
 
         Status() {}
-        Status(State state, bool done): state(state), done(done) {}
+        Status(Flow flow, bool done): flow(flow), done(done) {}
 
         double fraction_done() const;
+        double fraction_effort() const;
 
         bool parse(gubg::Strange &strange);
         void stream(std::ostream &os) const;
@@ -25,6 +27,9 @@ namespace dpn { namespace metadata {
 
         bool operator==(const Status &rhs) const;
         bool operator!=(const Status &rhs) const {return !operator==(rhs);}
+
+    private:
+        double fraction_done_raw_() const;
     };
 
     inline std::ostream &operator<<(std::ostream &os, const Status &status)
