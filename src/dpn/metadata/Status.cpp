@@ -22,6 +22,7 @@ namespace dpn { namespace metadata {
             case State::Active: return fraction_done_raw_(); break;
             case State::Cancelled: return 1.0; break;
         }
+        return 1.0;
     }
 
     double Status::fraction_effort() const
