@@ -15,7 +15,7 @@ namespace dpn { namespace onto {
     class Node
     {
     public:
-        Type type = Type::Line;
+        Type type = Type::Empty;
 
         std::string text;
         unsigned int depth = 0;

@@ -4,3 +4,4 @@ dpn.app
 dpn.ut
 *.resp
 .cook/
+compile_commands.json

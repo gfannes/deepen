@@ -83,8 +83,13 @@ namespace dpn { namespace onto {
                     bool do_stream = true;
                     switch (type)
                     {
-                        case Type::Title: os << std::string(depth, '#') << ' '; break;
-                        case Type::Line: break;
+                        case Type::Title:
+                            os << std::string(depth, '#') << ' ';
+                            break;
+                        case Type::Line:
+                            if (depth > 0)
+                                os << std::string(2*(depth-1), ' ') << "* ";
+                            break;
                         default: do_stream = false; break;
                     }
 
@@ -169,6 +174,8 @@ namespace dpn { namespace onto {
                         os << std::endl;
                         break;
                     case Type::Line:
+                        if (depth > 0)
+                            os << std::string(2*(depth-1), ' ') << "* ";
                         os << text << std::endl;
                         break;
                 }

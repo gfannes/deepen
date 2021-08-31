@@ -39,7 +39,7 @@ namespace dpn { namespace metadata {
         return os;
     }
 
-    void split(std::string &text, std::vector<Item> &items, const std::string &line);
+    void split(std::string &text, std::vector<Item> &items, gubg::Strange &line);
 
 } }
 

@@ -10,6 +10,12 @@ task :install => :build do
     sh "cp dpn.app #{ENV["gubg"]}/bin/dpn"
 end
 
+desc "Create compile_commands.json database"
+task :cc do
+    sh "cook -g ninja"
+    sh "ninja -t compdb > compile_commands.json"
+end
+
 desc "Build"
 task :build do
     mode = :debug

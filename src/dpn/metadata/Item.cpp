@@ -42,7 +42,7 @@ namespace dpn { namespace metadata {
         }
     }
 
-    void split(std::string &text, std::vector<Item> &items, const std::string &line)
+    void split(std::string &text, std::vector<Item> &items, gubg::Strange &line)
     {
         items.resize(0);
 
@@ -52,23 +52,21 @@ namespace dpn { namespace metadata {
             return;
         }
 
-        gubg::Strange strange{line};
-
-        if (gubg::Strange tmp; strange.front() == '@' || (strange.pop_to(tmp, " @") && strange.pop_front()))
+        if (gubg::Strange tmp; line.front() == '@' || (line.pop_to(tmp, " @") && line.pop_front()))
         {
             tmp.rtrim(' ');
             tmp.pop_all(text);
 
             Item item;
-            while (item.parse(strange))
+            while (item.parse(line))
             {
                 items.push_back(item);
-                strange.ltrim(' ');
+                line.ltrim(' ');
             }
         }
         else
         {
-            strange.pop_all(text);
+            line.pop_all(text);
         }
     }
 

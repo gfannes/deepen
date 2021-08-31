@@ -7,7 +7,7 @@ namespace dpn { namespace onto {
 
     enum class Type
     {
-        Root, Link, File, Title, Line,
+        Root, Link, File, Title, Line, Empty,
     };
 
     inline std::ostream &operator<<(std::ostream &os, Type type)
@@ -19,6 +19,7 @@ namespace dpn { namespace onto {
             case Type::File:  os << "File";  break;
             case Type::Title: os << "Title"; break;
             case Type::Line:  os << "Line";  break;
+            case Type::Empty: os << "Empty"; break;
             default: os << "<unknown Type>"; break;
         }
         return os;
