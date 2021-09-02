@@ -131,6 +131,9 @@ namespace dpn { namespace onto {
                                         metadata_items.insert(metadata::Item("S", oss.str()));
                                     }
 
+                                    oss.str(""); oss << agg.total_done;
+                                    metadata_items.insert(metadata::Item("D", oss.str()));
+
                                     oss.str(""); oss << agg.total_todo();
                                     metadata_items.insert(metadata::Item("T", oss.str()));
                                 }
@@ -141,6 +144,7 @@ namespace dpn { namespace onto {
                                 else if (item.key == "C") {}
                                 else if (item.key == "E") {}
                                 else if (item.key == "S") {}
+                                else if (item.key == "D") {}
                                 else if (item.key == "T") {}
                                 else metadata_items.insert(item);
                             }
