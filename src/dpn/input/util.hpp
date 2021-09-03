@@ -11,10 +11,25 @@ namespace dpn { namespace input { namespace util {
     {
         MSS_BEGIN(bool);
 
-        for (depth = 0; line.pop_if('#'); ++depth) {}
-        MSS_Q(depth > 0);
+        auto copy = line;
+        auto revert = [&](){line = copy;};
 
-        MSS(line.pop_if(' '), log::warning() << "Expected a ` ` after a Title indication" << std::endl);
+        depth = 0;
+
+        if (false) {}
+        else if (line.pop_if('#'))//Markdown
+        {
+            for (depth = 1; line.pop_if('#'); ++depth) {}
+        }
+        else if (line.pop_if('h'))//Textile/JIRA
+        {
+            MSS_Q(line.pop_decimal(depth), revert());
+            MSS_Q(line.pop_if('.'), revert());
+        }
+
+        MSS_Q(depth > 0, revert());
+
+        MSS(line.pop_if(' '), (revert(), log::warning() << "Expected a ` ` after a Title indication" << std::endl));
 
         MSS_END();
     }
@@ -25,7 +40,7 @@ namespace dpn { namespace input { namespace util {
 
         gubg::Strange orig = line;
 
-        if (gubg::Strange prefix; line.pop_to(prefix, '*'))
+        if (gubg::Strange prefix; line.pop_to(prefix, '*'))//Markdown/Textile/JIRA
         {
             depth = prefix.size();
             for (; line.pop_if('*'); ++depth) {}
