@@ -20,8 +20,8 @@ desc "Build"
 task :build do
     mode = :debug
     # mode = :release
-    toolchain = {linux: :gcc, windows: :msvc}[GUBG.os()]
-    cpp_version = {gcc: "2a", msvc: :latest}[toolchain]
+    toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
+    cpp_version = {gcc: "2a", msvc: :latest, clang: "17"}[toolchain]
     sh "cook -g ninja -t #{toolchain} -T c++.std=#{cpp_version} -T #{mode} -O .cook/#{mode} dpn/app"
     sh "ninja -v"
 end
