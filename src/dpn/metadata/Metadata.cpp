@@ -79,6 +79,8 @@ namespace dpn { namespace metadata {
                 os << "(status:" << *input.status << ")";
             if (input.linkpath_rel)
                 os << "(linkpath_rel:" << *input.linkpath_rel << ")";
+            if (input.linkpath_abs)
+                os << "(linkpath_abs:" << input.linkpath_abs->string() << ")";
             os << std::endl;
         }
 

@@ -166,25 +166,57 @@ namespace dpn { namespace onto {
                 break;
 
             case StreamConfig::Export:
-                switch (type)
                 {
-                    case Type::Title:
-                        os << std::string(depth, '#') << ' ' << text;
-                        if (metadata.agg_global.total_effort.minutes > 0)
+                    const auto is_cancelled = metadata.agg_local.status.state == metadata::State::Cancelled;
+
+                    switch (type)
+                    {
+                        case Type::Title:
+                            os << std::string(stream_config.title_depth_offset+depth, '#') << ' ';
+                            {
+                                if (is_cancelled) os << "~~";
+                                os << text;
+                                if (is_cancelled) os << "~~";
+                            }
+                            if (metadata.link)
+                                os << ' ' << metadata.link->key;
+                            if (metadata.agg_global.total_effort.minutes > 0)
+                            {
+                                const auto &agg = metadata.agg_global;
+                                os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << '%';
+                                if (is_cancelled) os << ", cancelled";
+                                os << ')';
+                            }
+                            os << std::endl;
+                            break;
+                        case Type::Line:
+                            if (depth > 0)
+                                os << std::string(2*(depth-1), ' ') << "* ";
+                            os << text << std::endl;
+                            break;
+                    }
+                    if (!is_cancelled)
+                    {
+                        if (metadata.input.linkpath_abs)
                         {
-                            const auto &agg = metadata.agg_global;
-                            os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << "%)";
+                            if (stream_config.abs_filepath__node)
+                            {
+                                const auto &abs_filepath__node = *stream_config.abs_filepath__node;
+                                const auto it = abs_filepath__node.find(*metadata.input.linkpath_abs);
+                                if (it != abs_filepath__node.end())
+                                {
+                                    const auto &linknode = it->second;
+                                    StreamConfig my_stream_config = stream_config;
+                                    if (type == Type::Title)
+                                        my_stream_config.title_depth_offset += depth;
+                                    linknode.stream(os, level+1, my_stream_config);
+                                }
+                            }
                         }
-                        os << std::endl;
-                        break;
-                    case Type::Line:
-                        if (depth > 0)
-                            os << std::string(2*(depth-1), ' ') << "* ";
-                        os << text << std::endl;
-                        break;
+                        for (const auto &child: childs)
+                            child.stream(os, level+1, stream_config);
+                    }
                 }
-                for (const auto &child: childs)
-                    child.stream(os, level+1, stream_config);
                 break;
 
             case StreamConfig::Naft:

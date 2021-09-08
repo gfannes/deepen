@@ -158,6 +158,7 @@ namespace dpn {
                             std::ofstream fo{options_.output_filepath};
                             onto::Node::StreamConfig stream_config;
                             stream_config.mode = onto::Node::StreamConfig::Export;
+                            stream_config.abs_filepath__node = &abs_filepath__node;
                             root.stream(fo, 0, stream_config);
                         }
                         break;
