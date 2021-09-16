@@ -26,9 +26,9 @@ namespace dpn {
         MSS_BEGIN(bool);
 
         if (false) {}
-        else if (options_.command)
+        else if (options_.command_args_opt)
         {
-            const auto &command = *options_.command;
+            const auto &command_args = *options_.command_args_opt;
 
             gubg::naft::Document doc{std::cout};
             unsigned int ok_count = 0;
@@ -39,9 +39,22 @@ namespace dpn {
                 {
                     std::filesystem::current_path(root);
                     auto run_node = doc.node("Run");
-                    run_node.attr("command", command);
                     run_node.attr("pwd", std::filesystem::current_path().string());
+                    {
+                        auto command_node = run_node.node("Command");
+                        for (const auto &arg: command_args)
+                            command_node.attr("arg", arg);
+                    }
                     run_node.text("\n");
+
+                    std::string command;
+                    for (const auto &arg: command_args)
+                    {
+                        if (!command.empty())
+                            command.push_back(' ');
+                        //@todo: escape space
+                        command += arg;
+                    }
 
                     std::flush(std::cout);
                     const auto rc = std::system(command.c_str());

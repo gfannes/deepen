@@ -4,6 +4,7 @@
 #include <dpn/enums.hpp>
 #include <string>
 #include <optional>
+#include <vector>
 #include <list>
 
 namespace dpn { 
@@ -22,7 +23,7 @@ namespace dpn {
         std::list<std::string> input_filepaths;
         std::string output_filepath;
 
-        std::optional<std::string> command;
+        std::optional<std::vector<std::string>> command_args_opt;
 
         bool parse(int argc, const char **argv);
         std::string help() const;
