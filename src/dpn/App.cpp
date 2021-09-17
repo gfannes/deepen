@@ -172,6 +172,8 @@ namespace dpn {
                             onto::Node::StreamConfig stream_config;
                             stream_config.mode = onto::Node::StreamConfig::Export;
                             stream_config.abs_filepath__node = &abs_filepath__node;
+                            //@todo: remove this temp test
+                            // stream_config.filter.emplace("m", "a");
                             root.stream(fo, 0, stream_config);
                         }
                         break;

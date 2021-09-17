@@ -49,6 +49,7 @@ namespace dpn { namespace onto {
             bool include_aggregates = false;
             const AbsFilepath__Node *abs_filepath__node = nullptr;
             unsigned int title_depth_offset = 0;
+            std::optional<metadata::Item> filter;
         };
         void stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const;
 

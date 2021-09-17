@@ -22,8 +22,14 @@ task :build do
     # mode = :release
     toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
     cpp_version = {gcc: "2a", msvc: :latest, clang: "17"}[toolchain]
-    sh "cook -g ninja -t #{toolchain} -T c++.std=#{cpp_version} -T #{mode} -O .cook/#{mode} dpn/app"
+    target = {macos: "-T target=x86_64-apple-macos11.3"}[GUBG.os()]
+    sh "cook -g ninja -t #{toolchain} -T c++.std=#{cpp_version} -T #{mode} #{target} -O .cook/#{mode} dpn/app"
     sh "ninja -v"
+end
+
+desc "Clean"
+task :clean do
+    FileUtils.rm_rf(".cook")
 end
 
 

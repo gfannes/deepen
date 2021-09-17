@@ -72,6 +72,8 @@ namespace dpn { namespace metadata {
                 agg_global.total_effort += local.total_effort;
                 agg_global.total_done += local.total_done;
                 agg_global.minimal_status = Status::minimum(agg_global.minimal_status, local.minimal_status);
+                for (const auto &[ns,values]: local.ns__values)
+                    agg_global.ns__values[ns].insert(values.begin(), values.end());
             };
 
             aggregate(agg_local);

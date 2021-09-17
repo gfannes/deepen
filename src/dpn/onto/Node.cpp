@@ -145,6 +145,11 @@ namespace dpn { namespace onto {
 
                         for (const auto &item: metadata_items)
                             stream("", item);
+                        for (const auto &[ns,value]: metadata.input.ns__value)
+                        {
+                            stream("@", ns);
+                            os << ':' << value;
+                        }
                         if (metadata.input.effort)
                             stream("@", *metadata.input.effort);
                         if (metadata.input.status)
@@ -160,6 +165,16 @@ namespace dpn { namespace onto {
 
             case StreamConfig::Export:
                 {
+                    if (stream_config.filter)
+                    {
+                        const auto filter = *stream_config.filter;
+                        const auto p = metadata.agg_global.ns__values.find(filter.key);
+                        if (p == metadata.agg_global.ns__values.end())
+                            return;
+                        if (!p->second.count(filter.value))
+                            return;
+                    }
+
                     const auto is_cancelled = metadata.agg_local.status.state == metadata::State::Cancelled;
 
                     switch (type)
