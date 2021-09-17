@@ -1,4 +1,4 @@
-# Parse bullets @C:80% @E:1h @T:12m @I
+# Parse bullets &C:80% &E:1h &T:12m @I
 
 * Count nr of ` ` and `*` @30m
   * Should work for `.textile` and `.md`
@@ -8,9 +8,9 @@
   * This will normalize all depths
   * Do not reduce depth to 0 if it was > 0
 
-# Parse `.textile` titles @C:0% @E:30m @T:30m @30m
+# Parse `.textile` titles &C:0% &E:30m &T:30m @30m
 
-# Support `use_case` and `feature` @C:0% @E:2h @T:2h @2h
+# Support `use_case` and `feature` &C:0% &E:2h &T:2h @2h
 
 * Add links from `use_case` folder to `feature`
   * Support for finding `feature/a/b.md` iso `../../feature/a/b.md` from `use_case/c/d.md` via gradual step-down

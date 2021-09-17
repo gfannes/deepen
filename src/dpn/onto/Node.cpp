@@ -120,34 +120,27 @@ namespace dpn { namespace onto {
                                     std::ostringstream oss;
 
                                     oss.str(""); oss << agg.pct_done() << '%';
-                                    metadata_items.insert(metadata::Item("C", oss.str()));
+                                    metadata_items.insert(metadata::Item(metadata::Item::Generated, "C", oss.str()));
 
                                     oss.str(""); oss << agg.total_effort;
-                                    metadata_items.insert(metadata::Item("E", oss.str()));
+                                    metadata_items.insert(metadata::Item(metadata::Item::Generated, "E", oss.str()));
 
                                     if (false)
                                     {
                                         oss.str(""); oss << agg.minimal_status;
-                                        metadata_items.insert(metadata::Item("S", oss.str()));
+                                        metadata_items.insert(metadata::Item(metadata::Item::Generated, "S", oss.str()));
                                     }
 
                                     oss.str(""); oss << agg.total_done;
-                                    metadata_items.insert(metadata::Item("D", oss.str()));
+                                    metadata_items.insert(metadata::Item(metadata::Item::Generated, "D", oss.str()));
 
                                     oss.str(""); oss << agg.total_todo();
-                                    metadata_items.insert(metadata::Item("T", oss.str()));
+                                    metadata_items.insert(metadata::Item(metadata::Item::Generated, "T", oss.str()));
                                 }
                             }
                             for (const auto &item: metadata.items)
-                            {
-                                if (false) {}
-                                else if (item.key == "C") {}
-                                else if (item.key == "E") {}
-                                else if (item.key == "S") {}
-                                else if (item.key == "D") {}
-                                else if (item.key == "T") {}
-                                else metadata_items.insert(item);
-                            }
+                                if (item.type == metadata::Item::User)
+                                   metadata_items.insert(item);
                         }
 
                         for (const auto &item: metadata_items)

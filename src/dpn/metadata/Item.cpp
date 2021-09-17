@@ -5,10 +5,16 @@ namespace dpn { namespace metadata {
 
     bool Item::parse(gubg::Strange &strange)
     {
-        if (!strange.pop_if('@'))
+        if (strange.empty())
             return false;
 
-        clear();
+        switch (strange.front())
+        {
+            case '@': clear(); type = User; break;
+            case '&': clear(); type = Generated; break;
+            default: return false; break;
+        }
+        strange.pop_count(1);
 
         if (strange.pop_bracket(key, "[]"))
         {
@@ -18,7 +24,7 @@ namespace dpn { namespace metadata {
         else
         {
             gubg::Strange content;
-            strange.pop_until(content, ' ') || strange.pop_until(content, '@') || strange.pop_all(content);
+            strange.pop_until(content, ' ') || strange.pop_until(content, '@') || strange.pop_until(content, '&') || strange.pop_all(content);
 
             content.pop_until(key, ':');
             content.pop_all(value);
@@ -29,7 +35,12 @@ namespace dpn { namespace metadata {
 
     void Item::stream(std::ostream &os) const
     {
-        os << '@';
+        switch (type)
+        {
+            case User: os << '@'; break;
+            case Generated: os << '&'; break;
+        }
+
         if (is_link)
         {
             os << "[" << key << "](" << value << ")";
@@ -52,22 +63,38 @@ namespace dpn { namespace metadata {
             return;
         }
 
-        if (gubg::Strange tmp; line.front() == '@' || (line.pop_to(tmp, " @") && line.pop_front()))
-        {
-            tmp.rtrim(' ');
-            tmp.pop_all(text);
-
+        auto is_start_of_metadata = [&](){
+            if (line.empty())
+                return false;
+            return line.front() == '@' || line.front() == '&';
+        };
+        auto parse_metadata_items = [&](){
             Item item;
             while (item.parse(line))
             {
                 items.push_back(item);
                 line.ltrim(' ');
             }
-        }
-        else
+        };
+
+        text.clear();
+        if (is_start_of_metadata())
         {
-            line.pop_all(text);
+            parse_metadata_items();
+            return;
         }
+
+        for (gubg::Strange part; line.pop_until(part, ' '); )
+        {
+            text += part.str();
+            if (is_start_of_metadata())
+            {
+                parse_metadata_items();
+                return;
+            }
+            text.push_back(' ');
+        }
+        text += line.str();
     }
 
 } }

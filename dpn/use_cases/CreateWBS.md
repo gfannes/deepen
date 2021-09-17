@@ -1,8 +1,8 @@
-# Create WBS @C:50.5% @E:5h5m @S:r @T:2h31m
+# Create WBS &C:50.5% &E:5h5m &S:r &T:2h31m
 
 * From single file
 
-## Metadata @C:100% @E:1h35m @S:V @T:0m
+## Metadata &C:100% &E:1h35m &S:V &T:0m
 
 * `metadata/Item.hpp`
     * Create `metadata::Item` as key-value of `std::string`
@@ -40,10 +40,10 @@
                 * Capital indicates State is complete
         * Aggregated metadata
             * Todo: time left
-            * Minimal state: `@S:Imp` all implementation is done
-            * Completion: `@c:60%`
+            * Minimal state: `&S:Imp` all implementation is done
+            * Completion: `&C:60%`
 
-## Section @C:100% @E:15m @S:V @T:0m
+## Section &C:100% &E:15m &S:V &T:0m
 
 * Support for output to file
     * Direct output from `stream()` @15m @V
@@ -52,7 +52,7 @@
         * Store in internal markup format, eg naft to represent links etc
         * Create folders and file streams on the fly during DFS
 
-## CLI @C:38.5% @E:1h5m @S:r @T:40m
+## CLI &C:38.5% &E:1h5m &S:r &T:40m
 
 * Add `-u|--update` option @5m @I
     * Output loaded Sections to file, with metadata
@@ -69,7 +69,7 @@
     * Support for unset estimate @10m
     * Store Status and Estimate in Aggregated and use this during calculations @10m
 
-## Parsing Markdown @C:34.5% @E:55m @S:r @T:36m
+## Parsing Markdown &C:34.5% &E:55m &S:r &T:36m
 
 * Create Section Type enum: Title, Line @5m @V
     * Stream support @5m @V
@@ -85,7 +85,7 @@
     * Update UT @10m
 * Remove `Section.lines` @5m @V
 
-## Neovim @C:0% @E:1h15m @S:r @T:1h15m
+## Neovim &C:0% &E:1h15m &S:r &T:1h15m
 
 * Add key binding to add effort @30m
     * Check if the last effort is the winner during `update`

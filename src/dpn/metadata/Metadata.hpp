@@ -8,11 +8,15 @@
 #include <gubg/mss.hpp>
 #include <vector>
 #include <set>
+#include <map>
 #include <optional>
 #include <cmath>
 #include <filesystem>
 
 namespace dpn { namespace metadata { 
+
+    using Ns__Value = std::map<std::string, std::string>;
+    using Ns__Values = std::map<std::string, std::set<std::string>>;
 
     struct Input
     {
@@ -20,6 +24,7 @@ namespace dpn { namespace metadata {
         std::optional<Status> status;
         std::optional<std::string> linkpath_rel;//Holds the path as specified in the []() link
         std::optional<std::filesystem::path> linkpath_abs;//Holds the absolute version, used for finding Nodes etc
+        Ns__Value ns__value;
     };
 
     struct Aggregated
@@ -28,6 +33,8 @@ namespace dpn { namespace metadata {
         Duration total_done;
         Status status;
         Status minimal_status;
+        Ns__Value ns__value;
+        Ns__Values ns__values;
 
         Duration total_todo() const {Duration d; d.minutes = total_effort.minutes-total_done.minutes; return d;}
         double fraction_done() const {return total_effort.minutes > 0 ? total_done.minutes/total_effort.minutes : 1.0;}
