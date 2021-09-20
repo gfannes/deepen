@@ -167,13 +167,22 @@ namespace dpn {
                         break;
                     case Operation::Export:
                         {
-                            MSS(!options_.output_filepath.empty(), log::error() << "Export requires an output filepath" << std::endl;);
-                            std::ofstream fo{options_.output_filepath};
+                            MSS(!!options_.output_filepath, log::error() << "Export requires an output filepath" << std::endl;);
+                            for (const auto &input_filepath: options_.input_filepaths)
+                            {
+                                MSS(*options_.output_filepath != input_filepath, log::error() << "The output filepath clashes with one of the input filepaths" << std::endl);
+                            }
+                            std::ofstream fo{*options_.output_filepath};
                             onto::Node::StreamConfig stream_config;
                             stream_config.mode = onto::Node::StreamConfig::Export;
                             stream_config.abs_filepath__node = &abs_filepath__node;
-                            //@todo: remove this temp test
-                            // stream_config.filter.emplace("m", "a");
+                            if (!options_.tags.empty())
+                            {
+                                std::string tmp = "@"; tmp += options_.tags.front();
+                                gubg::Strange strange{tmp};
+                                stream_config.filter.emplace();
+                                MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
+                            }
                             root.stream(fo, 0, stream_config);
                         }
                         break;

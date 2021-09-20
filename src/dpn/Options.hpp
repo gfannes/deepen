@@ -21,7 +21,9 @@ namespace dpn {
         bool include_aggregates = false;
 
         std::list<std::string> input_filepaths;
-        std::string output_filepath;
+        std::optional<std::string> output_filepath;
+
+        std::vector<std::string> tags;
 
         std::optional<std::vector<std::string>> command_args_opt;
 

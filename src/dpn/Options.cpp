@@ -24,7 +24,8 @@ namespace dpn {
             else if (is("-U", "--Update")) { operation_opt = Operation::Update; include_aggregates = true; }
             else if (is("-e", "--export")) { operation_opt = Operation::Export; }
             else if (is("-i", "--input")) { std::string tmp; MSS(argr.pop(tmp), log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp); }
-            else if (is("-o", "--output")) { MSS(argr.pop(output_filepath), log::error() << "Expected an output filepath" << std::endl); }
+            else if (is("-o", "--output")) { output_filepath.emplace(); MSS(argr.pop(*output_filepath), log::error() << "Expected an output filepath" << std::endl); }
+            else if (is("-t", "--tag")) { std::string tmp; MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl); tags.push_back(tmp); }
             else if (is("-c", "--command"))
             {
                 command_args_opt.emplace();
@@ -46,6 +47,7 @@ namespace dpn {
 -e    --export               Perform export operation
 -i    --input   <FILEPATH>   Set input filepath
 -o    --output  <FILEPATH>   Set output filepath
+-t    --tag     <TAG>        Set tag
 -c    --command <ARGUMENT>*  Run command in each root folder, this will consume all subsequent arguments
 Written by Geert Fannes
 )eod";
