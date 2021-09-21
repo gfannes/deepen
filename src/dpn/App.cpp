@@ -115,7 +115,7 @@ namespace dpn {
                         log::os(1) << "Loading `" << abs_filepath << "`" << std::endl;
                         MSS(input::load_from_file(node, abs_filepath));
 
-                        auto insert_into_abs_filepaths = [&](const std::string &new_abs_filepath){
+                        auto insert_into_abs_filepaths = [&](const auto &new_abs_filepath){
                             abs_filepaths.insert(new_abs_filepath);
                         };
                         node.each_abs_linkpath(insert_into_abs_filepaths);
