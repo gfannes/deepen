@@ -19,7 +19,7 @@ end
 desc "Build"
 task :build do
     mode = :debug
-    # mode = :release
+    mode = :release
     toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
     cpp_version = {gcc: "2a", msvc: :latest, clang: "17"}[toolchain]
     target = {macos: "-T target=x86_64-apple-macos11.3"}[GUBG.os()]

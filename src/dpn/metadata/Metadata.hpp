@@ -27,14 +27,23 @@ namespace dpn { namespace metadata {
         Ns__Value ns__value;
     };
 
-    struct Aggregated
+    struct AggregatedUp
     {
+        Status status;
+        Ns__Value ns__value;
+        Duration my_effort;
+        Duration my_done;
+
+        Duration my_todo() const {Duration d; d.minutes = my_effort.minutes-my_done.minutes; return d;}
+    };
+
+    struct AggregatedDown
+    {
+        Status minimal_status;
+        Ns__Values ns__values;
+
         Duration total_effort;
         Duration total_done;
-        Status status;
-        Status minimal_status;
-        Ns__Value ns__value;
-        Ns__Values ns__values;
 
         Duration total_todo() const {Duration d; d.minutes = total_effort.minutes-total_done.minutes; return d;}
         double fraction_done() const {return total_effort.minutes > 0 ? total_done.minutes/total_effort.minutes : 1.0;}
@@ -47,43 +56,41 @@ namespace dpn { namespace metadata {
         std::optional<Item> link;
         std::set<Item> items;
         Input input;
-        Aggregated agg_local;
+        AggregatedUp   agg_up;//Metadata aggregated from input and parent, if present
+        AggregatedDown agg_down_local;//Metadata aggregated from input, parent and childs, but locally within the given file
+        AggregatedDown agg_down_global;//Metadata aggregated from input, parent, childs, over all linked files
         std::set<std::filesystem::path> linkpaths;
-        Aggregated agg_global;
 
         void clear() {*this = Metadata{};}
 
         void setup(const std::vector<Item> &items, const std::filesystem::path &cwd);
 
-        void setup_aggregated();
-        void aggregate_from_parent(const Metadata &parent);
+        void aggregate_from_parent(const Metadata *parent, const Ns__Values &ns__possible_values);
         void aggregate_from_child(const Metadata &child);
-        void finalize_aggregated();
 
         template <typename Ftor>
         bool aggregate_global(Ftor &&ftor)
         {
             MSS_BEGIN(bool);
 
-            agg_global.status = agg_local.status;
-            agg_global.minimal_status = agg_local.minimal_status;
+            agg_down_global.minimal_status = agg_down_local.minimal_status;
 
-            auto aggregate = [&](const Aggregated &local){
-                agg_global.total_effort += local.total_effort;
-                agg_global.total_done += local.total_done;
-                agg_global.minimal_status = Status::minimum(agg_global.minimal_status, local.minimal_status);
+            auto aggregate = [&](const AggregatedDown &local){
+                agg_down_global.total_effort += local.total_effort;
+                agg_down_global.total_done += local.total_done;
+                agg_down_global.minimal_status = Status::minimum(agg_down_global.minimal_status, local.minimal_status);
                 for (const auto &[ns,values]: local.ns__values)
-                    agg_global.ns__values[ns].insert(values.begin(), values.end());
+                    agg_down_global.ns__values[ns].insert(values.begin(), values.end());
             };
 
-            aggregate(agg_local);
+            aggregate(agg_down_local);
 
             for (const auto &linkpath: linkpaths)
             {
-                const Aggregated *agg_local_ptr = ftor(linkpath);
-                MSS(!!agg_local_ptr, log::error() << "Could not find local aggregation for `" << linkpath << "`" << std::endl);
+                const AggregatedDown *agg_down_local_ptr = ftor(linkpath);
+                MSS(!!agg_down_local_ptr, log::error() << "Could not find local aggregation for `" << linkpath << "`" << std::endl);
 
-                aggregate(*agg_local_ptr);
+                aggregate(*agg_down_local_ptr);
             }
 
             MSS_END();

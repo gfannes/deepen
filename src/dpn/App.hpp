@@ -3,6 +3,7 @@
 
 #include <dpn/Options.hpp>
 #include <dpn/config/Config.hpp>
+#include <dpn/onto/Node.hpp>
 
 namespace dpn { 
 
@@ -16,8 +17,19 @@ namespace dpn {
         bool run();
 
     private:
+        bool list_();
+        bool update_(bool with_aggregates);
+        bool export_();
+        bool run_command_();
+
         const Options &options_;
         config::Config config_;
+
+        bool load_tags_(metadata::Ns__Values &) const;
+
+        bool load_ontology_();
+        onto::AbsFilepath__Node abs_filepath__node_;
+        onto::Node root_{onto::Type::Root};
     };
 
 }

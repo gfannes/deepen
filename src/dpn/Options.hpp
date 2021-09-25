@@ -4,7 +4,6 @@
 #include <dpn/enums.hpp>
 #include <string>
 #include <optional>
-#include <vector>
 #include <list>
 
 namespace dpn { 
@@ -14,21 +13,24 @@ namespace dpn {
     public:
         std::string exe_name;
 
-        bool print_help = false;
-        int verbosity_level = 0;
+        //Verb
+        std::optional<Verb> verb_opt;
 
-        std::optional<Operation> operation_opt;
-        bool include_aggregates = false;
+        //Options
+        int verbosity_level = 0;
 
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;
 
-        std::vector<std::string> tags;
+        std::list<std::string> tags;
 
-        std::optional<std::vector<std::string>> command_args_opt;
+        //Arguments
+        std::list<std::string> arguments;
 
         bool parse(int argc, const char **argv);
         std::string help() const;
+
+        bool print_help() const {return verb_opt && *verb_opt == Verb::Help;}
 
     private:
     };

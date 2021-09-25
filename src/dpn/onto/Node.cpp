@@ -3,22 +3,17 @@
 
 namespace dpn { namespace onto { 
 
-    void Node::aggregate_metadata(const Node *parent)
+    void Node::aggregate_metadata(const Node *parent, const metadata::Ns__Values &ns__values)
     {
-        metadata.setup_aggregated();
-
-        if (parent)
-            metadata.aggregate_from_parent(parent->metadata);
+        metadata.aggregate_from_parent(parent ? &parent->metadata : nullptr, ns__values);
 
         //Depth-first search
         for (auto &child: childs)
         {
-            child.aggregate_metadata(this);
+            child.aggregate_metadata(this, ns__values);
 
             metadata.aggregate_from_child(child.metadata);
         }
-
-        metadata.finalize_aggregated();
     }
 
     bool Node::merge_linkpaths(unsigned int &count, const AbsFilepath__Node &abs_filepath__node)
@@ -57,12 +52,12 @@ namespace dpn { namespace onto {
     {
         MSS_BEGIN(bool);
 
-        auto get_agg_local = [&](const auto &filepath) -> const metadata::Aggregated *
+        auto get_agg_local = [&](const auto &filepath) -> const metadata::AggregatedDown *
         {
             const auto p = abs_filepath__node.find(filepath);
             if (p == abs_filepath__node.end())
                 return nullptr;
-            return &p->second.metadata.agg_local;
+            return &p->second.metadata.agg_down_local;
         };
         MSS(metadata.aggregate_global(get_agg_local));
 
@@ -114,7 +109,7 @@ namespace dpn { namespace onto {
                         {
                             if (stream_config.include_aggregates)
                             {
-                                const auto &agg = metadata.agg_global;
+                                const auto &agg = metadata.agg_down_global;
                                 if (type == Type::Title && agg.total_effort.minutes > 0)
                                 {
                                     std::ostringstream oss;
@@ -164,22 +159,86 @@ namespace dpn { namespace onto {
                 break;
 
             case StreamConfig::Export:
+            case StreamConfig::List:
                 {
                     if (stream_config.filter)
                     {
                         const auto filter = *stream_config.filter;
-                        const auto p = metadata.agg_global.ns__values.find(filter.key);
-                        if (p == metadata.agg_global.ns__values.end())
+                        const auto p = metadata.agg_down_global.ns__values.find(filter.key);
+                        if (p == metadata.agg_down_global.ns__values.end())
                             return;
                         if (!p->second.count(filter.value))
                             return;
                     }
 
-                    const auto is_cancelled = metadata.agg_local.status.state == metadata::State::Cancelled;
+                    const auto is_cancelled = metadata.agg_up.status.state == metadata::State::Cancelled;
+                    const auto do_show = [&](){
+                        switch (stream_config.mode)
+                        {
+                            case StreamConfig::Export: return true;
+                            case StreamConfig::List: return metadata.agg_down_global.total_todo().minutes > 0;
+                            default: return false;
+                        }
+                    }();
 
-                    switch (type)
+                    auto stream_metadata_for_list = [&](bool aggregate){
+                        if (stream_config.mode == StreamConfig::List)
+                        {
+                            metadata::Duration todo, effort;
+                            if (aggregate)
+                            {
+                                const auto &agg = metadata.agg_down_global;
+                                effort = agg.total_effort;
+                                todo = agg.total_todo();
+                            }
+                            else
+                            {
+                                const auto &agg = metadata.agg_up;
+                                effort = agg.my_effort;
+                                todo = agg.my_todo();
+                            }
+
+                            if (effort.minutes == 0)
+                                os << "     \t     \t     \t";
+                            else
+                            {
+                                if (is_cancelled)
+                                    os << "  X  ";
+                                else if (todo.minutes == 0)
+                                    os << "  V  ";
+                                else
+                                    os << todo;
+                                os << "\t" << effort << "\t";
+                            }
+
+                            if (aggregate)
+                            {
+                                const auto &agg = metadata.agg_down_global;
+                                os << agg.pct_done() << "%\t";
+                            }
+                            else
+                            {
+                                os << "    \t";
+                            }
+                        }
+                    };
+                    auto stream_metadata_for_export = [&](){
+                        if (stream_config.mode == StreamConfig::Export && metadata.agg_down_global.total_effort.minutes > 0)
+                        {
+                            const auto &agg = metadata.agg_down_global;
+                            os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << '%';
+                            if (is_cancelled) os << ", cancelled";
+                            os << ')';
+                        }
+                    };
+
+                    if (do_show)
                     {
-                        case Type::Title:
+
+                        switch (type)
+                        {
+                            case Type::Title:
+                            stream_metadata_for_list(true);
                             os << std::string(stream_config.title_depth_offset+depth, '#') << ' ';
                             {
                                 if (is_cancelled) os << "~~";
@@ -188,21 +247,19 @@ namespace dpn { namespace onto {
                             }
                             if (metadata.link)
                                 os << ' ' << metadata.link->key;
-                            if (metadata.agg_global.total_effort.minutes > 0)
-                            {
-                                const auto &agg = metadata.agg_global;
-                                os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << '%';
-                                if (is_cancelled) os << ", cancelled";
-                                os << ')';
-                            }
+                            stream_metadata_for_export();
                             os << std::endl;
                             break;
-                        case Type::Line:
+
+                            case Type::Line:
+                            stream_metadata_for_list(false);
                             if (depth > 0)
                                 os << std::string(2*(depth-1), ' ') << "* ";
                             os << text << std::endl;
                             break;
+                        }
                     }
+
                     if (!is_cancelled)
                     {
                         if (metadata.input.linkpath_abs)
@@ -227,7 +284,7 @@ namespace dpn { namespace onto {
                 }
                 break;
 
-            case StreamConfig::Naft:
+                case StreamConfig::Naft:
                 {
                     const std::string indent(level*2, ' ');
 
@@ -238,7 +295,7 @@ namespace dpn { namespace onto {
                     os << indent << "}" << std::endl;
                 }
                 break;
+            }
         }
-    }
 
-} }
+    } }

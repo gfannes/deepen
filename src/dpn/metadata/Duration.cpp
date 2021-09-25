@@ -47,9 +47,16 @@ namespace dpn { namespace metadata {
         unsigned int weeks = divide(days, 5);
 
         if (weeks > 0)
+        {
             os << weeks << 'w';
+            hours = 0;
+            minutes = 0;
+        }
         if (days > 0)
+        {
             os << days << 'd';
+            minutes = 0;
+        }
         if (hours > 0)
             os << hours << 'h';
         if (minutes > 0 || (weeks == 0 && days == 0 && hours == 0))

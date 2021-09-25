@@ -25,169 +25,244 @@ namespace dpn {
     {
         MSS_BEGIN(bool);
 
-        if (false) {}
-        else if (options_.command_args_opt)
+        MSS(!!options_.verb_opt, log::error() << "No verb was specified" << std::endl);
+        const auto verb = *options_.verb_opt;
+
+        switch (verb)
         {
-            const auto &command_args = *options_.command_args_opt;
+            case Verb::Help:                    MSS(false,          log::internal_error() << "Printing help should be handled in Options" << std::endl); break;
 
-            gubg::naft::Document doc{std::cout};
-            unsigned int ok_count = 0;
-            std::list<std::string> fails;
-            for (const auto &root: config_.roots)
-            {
-                try
-                {
-                    std::filesystem::current_path(root);
-                    auto run_node = doc.node("Run");
-                    run_node.attr("pwd", std::filesystem::current_path().string());
-                    {
-                        auto command_node = run_node.node("Command");
-                        for (const auto &arg: command_args)
-                            command_node.attr("arg", arg);
-                    }
-                    run_node.text("\n");
+            case Verb::UpdateWithoutAggregates: MSS(update_(false), log::error() << "Could not update" << std::endl); break;
+            case Verb::UpdateWithAggregates:    MSS(update_(true) , log::error() << "Could not update" << std::endl); break;
 
-                    std::string command;
-                    for (const auto &arg: command_args)
-                    {
-                        if (!command.empty())
-                            command.push_back(' ');
-                        //@todo: escape space
-                        command += arg;
-                    }
+            case Verb::Export:                  MSS(export_(),      log::error() << "Could not export" << std::endl); break;
 
-                    std::flush(std::cout);
-                    const auto rc = std::system(command.c_str());
-                    {
-                        auto status_node = run_node.node("Status"); 
-                        status_node.attr("rc", rc);
-                        if (rc == 0)
-                            ++ok_count;
-                        else
-                            fails.push_back(root);
-                    }
-                }
-                catch (...)
-                {
-                    log::error() << "Path `" << root << "` does not exist" << std::endl;
-                    fails.push_back(root);
-                }
-                doc.text("\n");
-            }
-            auto status_node = doc.node("Status");
-            status_node.attr("fail", fails.size());
-            status_node.attr("ok", ok_count);
-            for (auto fp: fails)
-            {
-                auto fail_node = status_node.node("Fail");
-                fail_node.attr("path", fp);
-            }
-            MSS(fails.empty(), log::error() << "Some commands failed" << std::endl);
+            case Verb::List:                    MSS(list_(),        log::error() << "Could not list" << std::endl); break;
+
+            case Verb::Run:                     MSS(run_command_(), log::error() << "Could not run command" << std::endl); break;
+
+            default:                            MSS(false,          log::error() << "Unknown verb " << (int)verb << std::endl); break;
         }
-        else
+
+        MSS_END();
+    }
+
+    //Privates
+    bool App::list_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        onto::Node::StreamConfig stream_config;
+        stream_config.mode = onto::Node::StreamConfig::List;
+        stream_config.abs_filepath__node = &abs_filepath__node_;
+        if (!options_.tags.empty())
         {
-            MSS(!options_.input_filepaths.empty());
+            std::string tmp = "@"; tmp += options_.tags.front();
+            gubg::Strange strange{tmp};
+            stream_config.filter.emplace();
+            MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
+        }
+        root_.stream(std::cout, 0, stream_config);
 
-            onto::AbsFilepath__Node abs_filepath__node;
+        MSS_END();
+    }
 
-            onto::Node root{onto::Type::Root};
+    bool App::export_()
+    {
+        MSS_BEGIN(bool);
 
-            using AbsFilepaths = std::set<std::filesystem::path>;
-            AbsFilepaths abs_filepaths;
-            for (const auto &filepath: options_.input_filepaths)
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        MSS(!!options_.output_filepath, log::error() << "Export requires an output filepath" << std::endl;);
+        for (const auto &input_filepath: options_.input_filepaths)
+        {
+            MSS(*options_.output_filepath != input_filepath, log::error() << "The output filepath clashes with one of the input filepaths" << std::endl);
+        }
+        std::ofstream fo{*options_.output_filepath};
+        onto::Node::StreamConfig stream_config;
+        stream_config.mode = onto::Node::StreamConfig::Export;
+        stream_config.abs_filepath__node = &abs_filepath__node_;
+        if (!options_.tags.empty())
+        {
+            std::string tmp = "@"; tmp += options_.tags.front();
+            gubg::Strange strange{tmp};
+            stream_config.filter.emplace();
+            MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
+        }
+        root_.stream(fo, 0, stream_config);
+
+        MSS_END();
+    }
+
+    bool App::update_(bool with_aggregates)
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        for (const auto &[abs_filepath, node]: abs_filepath__node_)
+        {
+            std::ofstream fo{abs_filepath};
+            onto::Node::StreamConfig stream_config;
+            stream_config.mode = onto::Node::StreamConfig::Original;
+            stream_config.include_aggregates = with_aggregates;
+            node.stream(fo, 0, stream_config);
+        }
+
+        MSS_END();
+    }
+
+    bool App::run_command_()
+    {
+        MSS_BEGIN(bool);
+
+        const auto &command_args = options_.arguments;
+
+        gubg::naft::Document doc{std::cout};
+        unsigned int ok_count = 0;
+        std::list<std::string> fails;
+        for (const auto &root: config_.roots)
+        {
+            try
             {
-                root.childs.emplace_back(onto::Type::Link);
-                auto &link = root.childs.back();
-                link.metadata.input.linkpath_rel = filepath;
-                const auto filepath_abs = std::filesystem::absolute(filepath);
-                link.metadata.input.linkpath_abs = filepath_abs;
-                abs_filepaths.insert(filepath_abs);
-            }
+                std::filesystem::current_path(root);
+                auto run_node = doc.node("Run");
+                run_node.attr("pwd", std::filesystem::current_path().string());
+                {
+                    auto command_node = run_node.node("Command");
+                    for (const auto &arg: command_args)
+                        command_node.attr("arg", arg);
+                }
+                run_node.text("\n");
 
-            //Load all the nodes with a metadata.input.linkpath from file
-            while (abs_filepaths.size() != abs_filepath__node.size())
+                std::string command;
+                for (const auto &arg: command_args)
+                {
+                    if (!command.empty())
+                        command.push_back(' ');
+                        //@todo: escape space
+                    command += arg;
+                }
+
+                std::flush(std::cout);
+                const auto rc = std::system(command.c_str());
+                {
+                    auto status_node = run_node.node("Status"); 
+                    status_node.attr("rc", rc);
+                    if (rc == 0)
+                        ++ok_count;
+                    else
+                        fails.push_back(root);
+                }
+            }
+            catch (...)
             {
-                const auto copy_abs_filepaths = abs_filepaths;
-                for (const auto &abs_filepath: copy_abs_filepaths)
-                    if (abs_filepath__node.count(abs_filepath) == 0)
-                    {
-                        auto &node = abs_filepath__node[abs_filepath];
-                        log::os(1) << "Loading `" << abs_filepath << "`" << std::endl;
-                        MSS(input::load_from_file(node, abs_filepath));
-
-                        auto insert_into_abs_filepaths = [&](const auto &new_abs_filepath){
-                            abs_filepaths.insert(new_abs_filepath);
-                        };
-                        node.each_abs_linkpath(insert_into_abs_filepaths);
-                    }
+                log::error() << "Path `" << root << "` does not exist" << std::endl;
+                fails.push_back(root);
             }
+            doc.text("\n");
+        }
+        auto status_node = doc.node("Status");
+        status_node.attr("fail", fails.size());
+        status_node.attr("ok", ok_count);
+        for (auto fp: fails)
+        {
+            auto fail_node = status_node.node("Fail");
+            fail_node.attr("path", fp);
+        }
+        MSS(fails.empty(), log::error() << "Some commands failed" << std::endl);
+        MSS_END();
+    }
+
+    bool App::load_ontology_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(!options_.input_filepaths.empty());
+
+        using AbsFilepaths = std::set<std::filesystem::path>;
+        AbsFilepaths abs_filepaths;
+        for (const auto &filepath: options_.input_filepaths)
+        {
+            root_.childs.emplace_back(onto::Type::Link);
+            auto &link = root_.childs.back();
+            link.metadata.input.linkpath_rel = filepath;
+            const auto filepath_abs = std::filesystem::absolute(filepath);
+            link.metadata.input.linkpath_abs = filepath_abs;
+            abs_filepaths.insert(filepath_abs);
+        }
+
+        //Load all the nodes with a metadata.input.linkpath from file
+        while (abs_filepaths.size() != abs_filepath__node_.size())
+        {
+            const auto copy_abs_filepaths = abs_filepaths;
+            for (const auto &abs_filepath: copy_abs_filepaths)
+                if (abs_filepath__node_.count(abs_filepath) == 0)
+                {
+                    auto &node = abs_filepath__node_[abs_filepath];
+                    log::os(1) << "Loading `" << abs_filepath << "`" << std::endl;
+                    MSS(input::load_from_file(node, abs_filepath));
+
+                    auto insert_into_abs_filepaths = [&](const auto &new_abs_filepath){
+                        abs_filepaths.insert(new_abs_filepath);
+                    };
+                    node.each_abs_linkpath(insert_into_abs_filepaths);
+                }
+        }
+
+        {
+            metadata::Ns__Values ns__values;
+            MSS(load_tags_(ns__values));
 
             //Aggregate metadata
-            root.aggregate_metadata(nullptr);
-            for (auto &[_, node]: abs_filepath__node)
-                node.aggregate_metadata(nullptr);
+            root_.aggregate_metadata(nullptr, ns__values);
+            for (auto &[_, node]: abs_filepath__node_)
+                node.aggregate_metadata(nullptr, ns__values);
+        }
 
-            //Merge linkpaths until stable
-            while (true)
-            {
-                unsigned int count = 0u;
-                root.merge_linkpaths(count, abs_filepath__node);
-                for (auto &[_, node]: abs_filepath__node)
-                    node.merge_linkpaths(count, abs_filepath__node);
-                if (count == 0)
-                    break;
-            }
+        //Merge linkpaths until stable
+        while (true)
+        {
+            unsigned int count = 0u;
+            root_.merge_linkpaths(count, abs_filepath__node_);
+            for (auto &[_, node]: abs_filepath__node_)
+                node.merge_linkpaths(count, abs_filepath__node_);
+            if (count == 0)
+                break;
+        }
 
-            MSS(root.aggregate_linkpaths(abs_filepath__node));
-            for (auto &[_, node]: abs_filepath__node)
-            {
-                MSS(node.aggregate_linkpaths(abs_filepath__node));
-            }
+        MSS(root_.aggregate_linkpaths(abs_filepath__node_));
+        for (auto &[_, node]: abs_filepath__node_)
+        {
+            MSS(node.aggregate_linkpaths(abs_filepath__node_));
+        }
 
-            log::os(2) << root;
-            for (const auto &[abs_filepath, node]: abs_filepath__node)
-            {
-                log::os(2) << std::endl << abs_filepath << std::endl;
-                log::os(2) << node;
-            }
+        log::os(2) << root_;
+        for (const auto &[abs_filepath, node]: abs_filepath__node_)
+        {
+            log::os(2) << std::endl << abs_filepath << std::endl;
+            log::os(2) << node;
+        }
 
-            if (options_.operation_opt)
-            {
-                switch (*options_.operation_opt)
-                {
-                    case Operation::Update:
-                        for (const auto &[abs_filepath, node]: abs_filepath__node)
-                        {
-                            std::ofstream fo{abs_filepath};
-                            onto::Node::StreamConfig stream_config;
-                            stream_config.mode = onto::Node::StreamConfig::Original;
-                            stream_config.include_aggregates = options_.include_aggregates;
-                            node.stream(fo, 0, stream_config);
-                        }
-                        break;
-                    case Operation::Export:
-                        {
-                            MSS(!!options_.output_filepath, log::error() << "Export requires an output filepath" << std::endl;);
-                            for (const auto &input_filepath: options_.input_filepaths)
-                            {
-                                MSS(*options_.output_filepath != input_filepath, log::error() << "The output filepath clashes with one of the input filepaths" << std::endl);
-                            }
-                            std::ofstream fo{*options_.output_filepath};
-                            onto::Node::StreamConfig stream_config;
-                            stream_config.mode = onto::Node::StreamConfig::Export;
-                            stream_config.abs_filepath__node = &abs_filepath__node;
-                            if (!options_.tags.empty())
-                            {
-                                std::string tmp = "@"; tmp += options_.tags.front();
-                                gubg::Strange strange{tmp};
-                                stream_config.filter.emplace();
-                                MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
-                            }
-                            root.stream(fo, 0, stream_config);
-                        }
-                        break;
-                }
-            }
+        MSS_END();
+    }
+
+    bool App::load_tags_(metadata::Ns__Values &ns__values) const
+    {
+        MSS_BEGIN(bool);
+
+        ns__values.clear();
+
+        metadata::Item item;
+        for (const auto &tag: options_.tags)
+        {
+            std::string tmp = "@"; tmp += tag;
+            gubg::Strange strange{tmp};
+            MSS(item.parse(strange), log::error() << "Tag `" << tag << "` has incorrect format" << std::endl);
+
+            ns__values[item.key].insert(item.value);
         }
 
         MSS_END();

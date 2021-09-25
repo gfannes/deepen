@@ -27,7 +27,7 @@ namespace dpn { namespace onto {
         Node() {}
         Node(Type type): type(type) {}
 
-        void aggregate_metadata(const Node *parent);
+        void aggregate_metadata(const Node *parent, const metadata::Ns__Values &);
 
         using AbsFilepath__Node = std::map<std::filesystem::path, onto::Node>;
         bool merge_linkpaths(unsigned int &count, const AbsFilepath__Node &abs_filepath__node);
@@ -44,7 +44,7 @@ namespace dpn { namespace onto {
 
         struct StreamConfig
         {
-            enum Mode {Original, Export, Naft};
+            enum Mode {Original, Export, Naft, List};
             Mode mode = Naft;
             bool include_aggregates = false;
             const AbsFilepath__Node *abs_filepath__node = nullptr;

@@ -40,43 +40,78 @@ namespace dpn { namespace metadata {
         }
     }
 
-    void Metadata::setup_aggregated()
+    void Metadata::aggregate_from_parent(const Metadata *parent, const Ns__Values &ns__possible_values)
     {
-        if (input.effort)
+        //Non-effort aggregation
         {
-            const auto fraction_effort = (input.status ? input.status->fraction_effort() : 1.0);
-            agg_local.total_effort.minutes = input.effort->minutes * fraction_effort;
+            if (input.linkpath_abs)
+                linkpaths.insert(*input.linkpath_abs);
+
+            //Setup ns__value
+            agg_up.ns__value = input.ns__value;
+            //Aggregate ns__value UP
+            if (parent)
+            {
+                for (const auto &[ns,value]: parent->agg_up.ns__value)
+                {
+                    if (!agg_up.ns__value.count(ns))
+                        agg_up.ns__value[ns] = value;
+                }
+            }
+
+            //Setup ns__values
+            for (const auto &[ns,value]: input.ns__value)
+                agg_down_local.ns__values[ns].insert(value);
+
+            if (parent)
+            {
+                //Take status from input or parent, if present
+                agg_up.status = (input.status ? *input.status : parent->agg_up.status);
+
+                //Setup minimal_status
+                agg_down_local.minimal_status = agg_up.status;
+            }
         }
-        if (input.linkpath_abs)
-            linkpaths.insert(*input.linkpath_abs);
 
-        agg_local.ns__value = input.ns__value;
-        for (const auto &[ns,value]: input.ns__value)
-            agg_local.ns__values[ns].insert(value);
-    }
-    void Metadata::aggregate_from_parent(const Metadata &parent)
-    {
-        //Take status from input, if present, or from agg_local parent status
-        agg_local.status = (input.status ? *input.status : parent.agg_local.status);
-        agg_local.minimal_status = agg_local.status;
+        //Effort aggregation
+        {
+            auto effort_minutes = (input.effort ? input.effort->minutes : 0);
+            {
+                //Check that for each of the namespaces in ns__possible_values, this MD has
+                //a value that is in ns__possible_values[ns]. If not, this MD should be set to 0
+                for (const auto &[ns,possible_values]: ns__possible_values)
+                {
+                    bool set_to_zero = true;
+                    auto p = agg_up.ns__value.find(ns);
+                    if (p != agg_up.ns__value.end())
+                    {
+                        set_to_zero = false;
+                        const auto &actual_value = p->second;
+                        if (possible_values.count(actual_value) == 0)
+                            set_to_zero = true;
+                    }
+                    if (set_to_zero)
+                        effort_minutes = 0;
+                }
+            }
 
-        agg_local.total_done.minutes = agg_local.total_effort.minutes*agg_local.status.fraction_done();
+            agg_up.my_effort.minutes = effort_minutes* agg_up.status.fraction_effort();
+            agg_up.my_done.minutes = agg_up.my_effort.minutes*agg_up.status.fraction_done();
 
-        for (const auto &[ns,value]: parent.agg_local.ns__value)
-            if (!agg_local.ns__value.count(ns))
-                agg_local.ns__value[ns] = value;
+            agg_down_local.total_effort = agg_up.my_effort;
+            agg_down_local.total_done   = agg_up.my_done;
+        }
     }
     void Metadata::aggregate_from_child(const Metadata &child)
     {
-        agg_local.total_effort += child.agg_local.total_effort;
-        agg_local.total_done += child.agg_local.total_done;
-        agg_local.minimal_status = Status::minimum(agg_local.minimal_status, child.agg_local.minimal_status);
+        agg_down_local.minimal_status = Status::minimum(agg_down_local.minimal_status, child.agg_down_local.minimal_status);
 
-        for (const auto &[ns,values]: child.agg_local.ns__values)
-            agg_local.ns__values[ns].insert(values.begin(), values.end());
-    }
-    void Metadata::finalize_aggregated()
-    {
+        //Aggregate ns__values DOWN
+        for (const auto &[ns,values]: child.agg_down_local.ns__values)
+            agg_down_local.ns__values[ns].insert(values.begin(), values.end());
+
+        agg_down_local.total_effort += child.agg_down_local.total_effort;
+        agg_down_local.total_done += child.agg_down_local.total_done;
     }
 
     void Metadata::stream(std::ostream &os, unsigned int level) const
@@ -115,12 +150,11 @@ namespace dpn { namespace metadata {
             os << indent << "  " << "[Path](" << linkpath.string() << ")" << std::endl;
         os << indent << "}" << std::endl;
 
-        auto stream_agg = [&](const char *name, const auto &agg){
+        auto stream_up = [&](const char *name, const auto &agg){
             os << indent << "[" << name << "]";
-            os << "(total_effort:" << agg.total_effort << ")";
-            os << "(total_done:" << agg.total_done << ")";
+            os << "(my_effort:" << agg.my_effort << ")";
+            os << "(my_done:" << agg.my_done << ")";
             os << "(status:" << agg.status << ")";
-            os << "(minimal_status:" << agg.minimal_status << ")";
             if (!agg.ns__value.empty())
             {
                 os << indent << "{" << std::endl;
@@ -128,6 +162,15 @@ namespace dpn { namespace metadata {
                     os << indent << "  [Ns__Value]" << "(ns:" << ns << ")(value:" << value << ")" << std::endl;
                 os <<  indent << "}" << std::endl;
             }
+            os << std::endl;
+        };
+        stream_up("agg_up", agg_up);
+
+        auto stream_down = [&](const char *name, const auto &agg){
+            os << indent << "[" << name << "]";
+            os << "(total_effort:" << agg.total_effort << ")";
+            os << "(total_done:" << agg.total_done << ")";
+            os << "(minimal_status:" << agg.minimal_status << ")";
             if (!agg.ns__values.empty())
             {
                 os << indent << "{" << std::endl;
@@ -142,8 +185,8 @@ namespace dpn { namespace metadata {
             }
             os << std::endl;
         };
-        stream_agg("agg_local", agg_local);
-        stream_agg("agg_global", agg_global);
+        stream_down("agg_down_local", agg_down_local);
+        stream_down("agg_down_global", agg_down_global);
     }
 
 } }

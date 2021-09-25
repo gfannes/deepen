@@ -3,9 +3,9 @@
 
 namespace dpn { 
 
-    enum class Operation
+    enum class Verb
     {
-        Update, Export,
+        Help, UpdateWithoutAggregates, UpdateWithAggregates, Export, List, Run,
     };
 
 }
