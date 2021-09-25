@@ -29,7 +29,8 @@ namespace dpn {
                 else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                 else if (is("e", "export")) {verb_opt = Verb::Export;}
                 else if (is("r", "run"))    {verb_opt = Verb::Run;}
-                else {state = State::Options;}
+
+                state = State::Options;
             }
 
             if (state == State::Options)
