@@ -199,7 +199,7 @@ namespace dpn { namespace onto {
                             }
 
                             if (effort.minutes == 0)
-                                os << "     \t     \t     \t";
+                                os << "     \t     \t";
                             else
                             {
                                 if (is_cancelled)
