@@ -53,6 +53,7 @@ namespace dpn {
                     break;
 
                     case State::Arguments:
+                    arguments.push_back(arg);
                     for (std::string arg; argr.pop(arg); )
                         arguments.push_back(arg);
                     arg_was_recognised = true;
