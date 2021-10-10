@@ -5,6 +5,7 @@ root.book("dpn", fun(b){
         rcp.add("src", "dpn/**.[hc]pp")
         rcp.depends_on("gubg/std/func")
         rcp.depends_on("gubg/algo/func")
+        rcp.depends_on("termcolor")
     })
 
     b.recipe("app", TargetType.Executable, fun(rcp){

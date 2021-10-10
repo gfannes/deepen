@@ -2,6 +2,9 @@
 #include <dpn/log.hpp>
 #include <gubg/cli/Range.hpp>
 #include <gubg/mss.hpp>
+#include <termcolor/termcolor.hpp>
+#include <sstream>
+#include <iomanip>
 
 namespace dpn { 
 
@@ -67,26 +70,41 @@ namespace dpn {
 
     std::string Options::help() const
     {
-        return std::string("Usage: ")+exe_name+R"eod( verb? option* argument*
-        Verbs:
-        h     help                   Print this help
-        l     list                   List unfinished items
-        u     update                 Perform update operation, do not include aggregates
-        U     Update                 Perform update operation, do include aggregates
-        e     export                 Perform export operation
-        r     run                    Run command composed from the arguments in each root folder
-        Options:
-        -h    --help                 Print this help
-        -V    --verbose <NUMBER>     Set verbosity level [default: 0]
-        -i    --input   <FILEPATH>   Add input filepath
-        -o    --output  <FILEPATH>   Set output filepath
-        -t    --tag     <TAG>        Add tag
-        --    --end                  All subsequent items will be interpreted as argument
-        Argument interpretation for verb:
-        help                         Provide help on the specified verbs
-        run                          Different items of the command to run
-        Written by Geert Fannes
-        )eod";
+        std::ostringstream oss; oss << termcolor::colorize;
+
+        oss << "Usage: " << termcolor::green << exe_name << " verb? option* argument*" << termcolor::reset << std::endl;
+
+        auto option = [&](auto sh, auto lh, auto opt, auto expl){
+            oss                      << std::setw(4)               << " ";
+            oss << termcolor::yellow << std::setw(6)  << std::left << sh << termcolor::reset;
+            oss << termcolor::yellow << std::setw(12) << std::left << lh << termcolor::reset;
+            oss << termcolor::blue   << std::setw(12) << std::left << opt << termcolor::reset;
+            oss                      << std::setw(6)  << std::left << expl;
+            oss << std::endl;
+        };
+
+        oss << "Verbs:" << std::endl;
+        option("h", "help", "", "Print this help");
+        option("l", "list", "", "List unfinished items");
+        option("u", "update", "", "Perform update operation, do not include aggregates");
+        option("U", "Update", "", "Perform update operation, do include aggregates");
+        option("e", "export", "", "Perform export operation");
+        option("r", "run", "", "Run command composed from the arguments in each root folder");
+
+        oss << "Options:" << std::endl;
+        option("-h", "--help", "", "Print this help");
+        option("-V", "--verbose", "<NUMBER>", "Set verbosity level [default: 0]");
+        option("-i", "--input", "<FILEPATH>", "Add input filepath");
+        option("-o", "--output", "<FILEPATH>", "Set output filepath");
+        option("-t", "--tag", "<TAG>", "Add tag");
+        option("--", "--end", "", "All subsequent items will be interpreted as argument");
+
+        oss << "Argument interpretation for verb:" << std::endl;
+        option("", "help", "", "Provide help on the specified verbs");
+        option("", "run", "", "Different items of the command to run");
+
+        oss << "Written by Geert Fannes" << std::endl;
+        return oss.str();
     }
 
 }
