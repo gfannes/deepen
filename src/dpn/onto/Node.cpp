@@ -85,6 +85,10 @@ namespace dpn { namespace onto {
                             if (depth > 0)
                                 os << std::string(2*(depth-1), ' ') << "* ";
                             break;
+                        case Type::CodeBlock:
+                            os << "```" << std::endl << text << "```" << std::endl;
+                            do_stream = false;
+                            break;
                         default: do_stream = false; break;
                     }
 
@@ -261,6 +265,8 @@ namespace dpn { namespace onto {
                             case Type::CodeBlock:
                             os << "```" << std::endl << text << "```" << std::endl;
                             break;
+
+                            default: break;
                         }
                     }
 

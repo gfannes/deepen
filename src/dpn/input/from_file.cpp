@@ -59,7 +59,29 @@ namespace dpn { namespace input {
             };
 
             onto::Node *node_ptr = nullptr;
-            if (strange.empty())
+            if (strange.pop_if("```"))
+            {
+                if (!code_block_ptr)
+                {
+                    MSS(process_empty_count());
+
+                    MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
+                    title_ptr->childs.emplace_back(onto::Type::CodeBlock);
+                    code_block_ptr = &title_ptr->childs.back();
+                    code_block_ptr->depth = 0;
+                }
+                else
+                {
+                    code_block_ptr = nullptr;
+                }
+            }
+            else if (code_block_ptr)
+            {
+                auto &text = code_block_ptr->text;
+                text += raw_line;
+                text += "\n";
+            }
+            else if (strange.empty())
             {
                 ++empty_count;
             }
@@ -67,48 +89,25 @@ namespace dpn { namespace input {
             {
                 MSS(process_empty_count());
 
-                if (strange.pop_if("```"))
+                if (unsigned int depth = 0; util::pop_title(strange, depth))
                 {
-                    if (!code_block_ptr)
-                    {
-                        MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
-                        title_ptr->childs.emplace_back(onto::Type::CodeBlock);
-                        code_block_ptr = &title_ptr->childs.back();
-                        code_block_ptr->depth = 0;
-                    }
-                    else
-                    {
-                        code_block_ptr = nullptr;
-                    }
+                        //We found a Title
+                    title_nodes.emplace_back(onto::Type::Title);
+                    title_ptr = &title_nodes.back();
+                    node_ptr = title_ptr;
+                    node_ptr->depth = depth;
+                }
+                else if (unsigned int depth = 0; util::pop_bullet(strange, depth))
+                {
+                        //We found a bullet
+                    MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
+                    title_ptr->childs.emplace_back(onto::Type::Line);
+                    node_ptr = &title_ptr->childs.back();
+                    node_ptr->depth = depth;
                 }
                 else
                 {
-                    if (code_block_ptr)
-                    {
-                        auto &text = code_block_ptr->text;
-                        text += raw_line;
-                        text += "\n";
-                    }
-                    else if (unsigned int depth = 0; util::pop_title(strange, depth))
-                    {
-                        //We found a Title
-                        title_nodes.emplace_back(onto::Type::Title);
-                        title_ptr = &title_nodes.back();
-                        node_ptr = title_ptr;
-                        node_ptr->depth = depth;
-                    }
-                    else if (unsigned int depth = 0; util::pop_bullet(strange, depth))
-                    {
-                        //We found a bullet
-                        MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
-                        title_ptr->childs.emplace_back(onto::Type::Line);
-                        node_ptr = &title_ptr->childs.back();
-                        node_ptr->depth = depth;
-                    }
-                    else
-                    {
-                        MSS(false, log::internal_error() << "Line is not empty, not a title and not a bullet. What is it?" << std::endl);
-                    }
+                    MSS(false, log::internal_error() << "Line is not empty, not a title and not a bullet. What is it?" << std::endl);
                 }
             }
 
