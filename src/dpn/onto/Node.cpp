@@ -257,6 +257,10 @@ namespace dpn { namespace onto {
                                 os << std::string(2*(depth-1), ' ') << "* ";
                             os << text << std::endl;
                             break;
+
+                            case Type::CodeBlock:
+                            os << "```" << std::endl << text << "```" << std::endl;
+                            break;
                         }
                     }
 
