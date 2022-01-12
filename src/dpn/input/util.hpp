@@ -59,6 +59,18 @@ namespace dpn { namespace input { namespace util {
         MSS_END();
     }
 
+    inline bool pop_code_block_marker(gubg::Strange &line)
+    {
+        MSS_BEGIN(bool);
+
+        auto copy = line;
+        auto revert = [&](){line = copy;};
+
+        MSS_Q(line.pop_if("```") || line.pop_if("{code}"), revert());
+
+        MSS_END();
+    }
+
 } } }
 
 #endif

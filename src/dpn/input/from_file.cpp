@@ -33,7 +33,10 @@ namespace dpn { namespace input {
         onto::Nodes title_nodes;
         //Add a dummy Title that will receive the first lines before an actual Title is encountered
         title_nodes.emplace_back(onto::Type::Title);
+
         onto::Node *title_ptr = &title_nodes.back();
+
+        unsigned int last_depth = 0;
 
         onto::Node *code_block_ptr = nullptr;
 
@@ -59,7 +62,7 @@ namespace dpn { namespace input {
             };
 
             onto::Node *node_ptr = nullptr;
-            if (strange.pop_if("```"))
+            if (util::pop_code_block_marker(strange))
             {
                 if (!code_block_ptr)
                 {
@@ -68,7 +71,7 @@ namespace dpn { namespace input {
                     MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
                     title_ptr->childs.emplace_back(onto::Type::CodeBlock);
                     code_block_ptr = &title_ptr->childs.back();
-                    code_block_ptr->depth = 0;
+                    code_block_ptr->depth = last_depth;
                 }
                 else
                 {
@@ -96,6 +99,7 @@ namespace dpn { namespace input {
                     title_ptr = &title_nodes.back();
                     node_ptr = title_ptr;
                     node_ptr->depth = depth;
+                    last_depth = depth;
                 }
                 else if (unsigned int depth = 0; util::pop_bullet(strange, depth))
                 {
@@ -104,6 +108,7 @@ namespace dpn { namespace input {
                     title_ptr->childs.emplace_back(onto::Type::Line);
                     node_ptr = &title_ptr->childs.back();
                     node_ptr->depth = depth;
+                    last_depth = depth;
                 }
                 else
                 {
