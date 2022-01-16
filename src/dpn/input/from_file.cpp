@@ -27,12 +27,21 @@ namespace dpn { namespace input {
         file_node.type = onto::Type::File;
         file_node.filepath = filepath;
 
+        onto::Format format = onto::Format::Markdown;
+        {
+            const auto ext = filepath.extension().string();
+            if (false);
+            else if (ext == ".md") format = onto::Format::Markdown;
+            else if (ext == ".jira") format = onto::Format::JIRA;
+        }
+        file_node.format = format;
+
         std::vector<std::string> lines;
         gubg::string_algo::split_lines(lines, content);
 
         onto::Nodes title_nodes;
         //Add a dummy Title that will receive the first lines before an actual Title is encountered
-        title_nodes.emplace_back(onto::Type::Title);
+        title_nodes.emplace_back(onto::Type::Title, format);
 
         onto::Node *title_ptr = &title_nodes.back();
 
@@ -55,21 +64,21 @@ namespace dpn { namespace input {
                 for (auto ix = 0u; ix < empty_count; ++ix)
                 {
                     MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
-                    title_ptr->childs.emplace_back(onto::Type::Line);
+                    title_ptr->childs.emplace_back(onto::Type::Line, format);
                 }
                 empty_count = 0u;
                 MSS_END();
             };
 
             onto::Node *node_ptr = nullptr;
-            if (util::pop_code_block_marker(strange))
+            if (util::pop_code_block_marker(strange, format))
             {
                 if (!code_block_ptr)
                 {
                     MSS(process_empty_count());
 
                     MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
-                    title_ptr->childs.emplace_back(onto::Type::CodeBlock);
+                    title_ptr->childs.emplace_back(onto::Type::CodeBlock, format);
                     code_block_ptr = &title_ptr->childs.back();
                     code_block_ptr->depth = last_depth;
                 }
@@ -92,20 +101,20 @@ namespace dpn { namespace input {
             {
                 MSS(process_empty_count());
 
-                if (unsigned int depth = 0; util::pop_title(strange, depth))
+                if (unsigned int depth = 0; util::pop_title(strange, depth, format))
                 {
-                        //We found a Title
-                    title_nodes.emplace_back(onto::Type::Title);
+                    //We found a Title
+                    title_nodes.emplace_back(onto::Type::Title, format);
                     title_ptr = &title_nodes.back();
                     node_ptr = title_ptr;
                     node_ptr->depth = depth;
                     last_depth = depth;
                 }
-                else if (unsigned int depth = 0; util::pop_bullet(strange, depth))
+                else if (unsigned int depth = 0; util::pop_bullet(strange, depth, format))
                 {
                         //We found a bullet
                     MSS(!!title_ptr, log::internal_error() << "title_ptr should never be nullptr" << std::endl);
-                    title_ptr->childs.emplace_back(onto::Type::Line);
+                    title_ptr->childs.emplace_back(onto::Type::Line, format);
                     node_ptr = &title_ptr->childs.back();
                     node_ptr->depth = depth;
                     last_depth = depth;
@@ -131,7 +140,7 @@ namespace dpn { namespace input {
 
             MSS(standardize_depths_(childs, false));
 
-            MSS(append_according_to_depth_(title_node.childs, childs, 0));
+            MSS(append_according_to_depth_(title_node.childs, childs, 0, format));
         }
 
         //Move the initial lines before the first Title to file_node.childs
@@ -141,7 +150,7 @@ namespace dpn { namespace input {
             title_nodes.erase(title_nodes.begin());
         }
 
-        MSS(append_according_to_depth_(file_node.childs, title_nodes, 1));
+        MSS(append_according_to_depth_(file_node.childs, title_nodes, 1, format));
 
         MSS_END();
     }
@@ -192,7 +201,7 @@ namespace dpn { namespace input {
         MSS_END();
     }
 
-    bool append_according_to_depth_(onto::Nodes &dst, const onto::Nodes &src, unsigned int smallest_depth)
+    bool append_according_to_depth_(onto::Nodes &dst, const onto::Nodes &src, unsigned int smallest_depth, onto::Format format)
     {
         MSS_BEGIN(bool);
 
@@ -211,7 +220,7 @@ namespace dpn { namespace input {
                 if (depth0__nodes[depth0-1]->empty())
                 {
                     //This can happen if the first Line, even before a Title, is a bullet with depth 1
-                    depth0__nodes[depth0-1]->emplace_back(onto::Type::Empty);
+                    depth0__nodes[depth0-1]->emplace_back(onto::Type::Empty, format);
                 }
 
                 MSS(!depth0__nodes[depth0-1]->empty());

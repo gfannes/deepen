@@ -3,6 +3,13 @@
 
 namespace dpn { namespace onto { 
 
+    void Node::set_format(Format fmt)
+    {
+        format = fmt;
+        for (auto &child: childs)
+            child.set_format(fmt);
+    }
+
     void Node::aggregate_metadata(const Node *parent, const metadata::Ns__Values &ns__values)
     {
         metadata.aggregate_from_parent(parent ? &parent->metadata : nullptr, ns__values);
@@ -79,14 +86,29 @@ namespace dpn { namespace onto {
                     switch (type)
                     {
                         case Type::Title:
-                            os << std::string(depth, '#') << ' ';
+                            switch (format)
+                            {
+                                case Format::Markdown: os << std::string(depth, '#') << ' '; break;
+                                case Format::JIRA: os << 'h' << depth << ". "; break;
+                            }
                             break;
                         case Type::Line:
                             if (depth > 0)
-                                os << std::string(2*(depth-1), ' ') << "* ";
+                            {
+                                switch (format)
+                                {
+                                    case Format::Markdown: os << std::string(2*(depth-1), ' ') << "* "; break;
+                                    case Format::JIRA:     os << std::string(depth, '*') << (depth ? " " : ""); break;
+                                }
+                                
+                            }
                             break;
                         case Type::CodeBlock:
-                            os << "```" << std::endl << text << "```" << std::endl;
+                            switch (format)
+                            {
+                                case Format::Markdown: os << "```" << std::endl << text << "```" << std::endl; break;
+                                case Format::JIRA: os << "{code}" << std::endl << text << "{code}" << std::endl; break;
+                            }
                             do_stream = false;
                             break;
                         default: do_stream = false; break;
@@ -243,7 +265,11 @@ namespace dpn { namespace onto {
                         {
                             case Type::Title:
                             stream_metadata_for_list(true);
-                            os << std::string(stream_config.title_depth_offset+depth, '#') << ' ';
+                            switch (format)
+                            {
+                                case Format::Markdown: os << std::string(stream_config.title_depth_offset+depth, '#') << ' '; break;
+                                case Format::JIRA:     os << 'h' << stream_config.title_depth_offset+depth << ". "; break;
+                            }
                             {
                                 if (is_cancelled) os << "~~";
                                 os << text;
@@ -258,12 +284,22 @@ namespace dpn { namespace onto {
                             case Type::Line:
                             stream_metadata_for_list(false);
                             if (depth > 0)
-                                os << std::string(2*(depth-1), ' ') << "* ";
+                            {
+                                switch (format)
+                                {
+                                    case Format::Markdown: os << std::string(2*(depth-1), ' ') << "* "; break;
+                                    case Format::JIRA:     os << std::string(depth, '*') << (depth ? " " : ""); break;
+                                }
+                            }
                             os << text << std::endl;
                             break;
 
                             case Type::CodeBlock:
-                            os << "```" << std::endl << text << "```" << std::endl;
+                            switch (format)
+                            {
+                                case Format::Markdown: os << "```"    << std::endl << text << "```" << std::endl; break;
+                                case Format::JIRA:     os << "{code}" << std::endl << text << "{code}" << std::endl; break;
+                            }
                             break;
 
                             default: break;

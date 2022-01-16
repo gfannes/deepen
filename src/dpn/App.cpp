@@ -81,6 +81,14 @@ namespace dpn {
             MSS(*options_.output_filepath != input_filepath, log::error() << "The output filepath clashes with one of the input filepaths" << std::endl);
         }
         std::ofstream fo{*options_.output_filepath};
+
+        if (options_.format)
+        {
+            root_.set_format(*options_.format);
+            for (auto &[_, node]: abs_filepath__node_)
+                node.set_format(*options_.format);
+        }
+
         onto::Node::StreamConfig stream_config;
         stream_config.mode = onto::Node::StreamConfig::Export;
         stream_config.abs_filepath__node = &abs_filepath__node_;

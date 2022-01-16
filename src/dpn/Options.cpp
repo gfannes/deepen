@@ -50,6 +50,11 @@ namespace dpn {
                     else if (is("-i", "--input"))           {MSS(argr.pop(tmp),                       log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp);}
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
                     else if (is("-t", "--tag"))             {MSS(argr.pop(tmp),                       log::error() << "Expected a tag" << std::endl); tags.push_back(tmp);}
+                    else if (is("-f", "--format"))
+                    {
+                        MSS(argr.pop(tmp),                                                            log::error() << "Expected a tag" << std::endl);
+                        MSS(onto::parse_format(tmp, [&](auto fmt){format = fmt;}),                    log::error() << "Unknown format '" << tmp << "'" << std::endl);
+                    }
                     else if (is("--", "--end"))             {state = State::Arguments;}
                     else if (!arg.empty() && arg[0] == '-') {MSS(false,                               log::error() << "Unknown option " << arg << std::endl;);}
                     else {state = State::Arguments;}
@@ -97,6 +102,7 @@ namespace dpn {
         option("-i", "--input", "<FILEPATH>", "Add input filepath");
         option("-o", "--output", "<FILEPATH>", "Set output filepath");
         option("-t", "--tag", "<TAG>", "Add tag");
+        option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");
 
         oss << "Argument interpretation for verb:" << std::endl;

@@ -17,6 +17,8 @@ namespace dpn { namespace onto {
     public:
         Type type = Type::Empty;
 
+        Format format = Format::Markdown;
+ 
         std::string text;
         unsigned int depth = 0;
         std::filesystem::path filepath;//Only used for Type::File
@@ -26,12 +28,15 @@ namespace dpn { namespace onto {
 
         Node() {}
         Node(Type type): type(type) {}
+        Node(Type type, Format format): type(type), format(format) {}
 
         void aggregate_metadata(const Node *parent, const metadata::Ns__Values &);
 
         using AbsFilepath__Node = std::map<std::filesystem::path, onto::Node>;
         bool merge_linkpaths(unsigned int &count, const AbsFilepath__Node &abs_filepath__node);
         bool aggregate_linkpaths(const AbsFilepath__Node &abs_filepath__node);
+
+        void set_format(Format);
 
         template <typename Ftor>
         void each_abs_linkpath(Ftor &&ftor) const

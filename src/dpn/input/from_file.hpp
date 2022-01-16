@@ -12,7 +12,7 @@ namespace dpn { namespace input {
 
     //Privates
     bool standardize_depths_(onto::Nodes &nodes, bool unit_step);
-    bool append_according_to_depth_(onto::Nodes &dst, const onto::Nodes &src, unsigned int smallest_depth);
+    bool append_according_to_depth_(onto::Nodes &dst, const onto::Nodes &src, unsigned int smallest_depth, onto::Format format);
 
 } }
 
