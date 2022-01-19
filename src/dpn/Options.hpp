@@ -31,6 +31,7 @@ namespace dpn {
         std::list<std::string> arguments;
 
         bool parse(int argc, const char **argv);
+        bool rearrange();
         std::string help() const;
 
         bool print_help() const {return verb_opt && *verb_opt == Verb::Help;}

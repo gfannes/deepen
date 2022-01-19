@@ -39,7 +39,6 @@ namespace dpn {
                     else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                     else if (is("e", "export")) {verb_opt = Verb::Export;}
                     else if (is("r", "run"))    {verb_opt = Verb::Run;}
-
                     state = State::Options;
                     break;
 
@@ -67,6 +66,26 @@ namespace dpn {
                     arg_was_recognised = true;
                     break;
                 }
+            }
+        }
+
+        MSS_END();
+    }
+
+    bool Options::rearrange()
+    {
+        MSS_BEGIN(bool);
+
+        if (verb_opt)
+        {
+            switch (*verb_opt)
+            {
+                case Verb::UpdateWithAggregates:
+                case Verb::UpdateWithoutAggregates:
+                input_filepaths.splice(input_filepaths.end(), arguments);
+                break;
+
+                default: break;
             }
         }
 
@@ -108,6 +127,22 @@ namespace dpn {
         oss << "Argument interpretation for verb:" << std::endl;
         option("", "help", "", "Provide help on the specified verbs");
         option("", "run", "", "Different items of the command to run");
+        option("", "update|Update", "", "Input filepaths");
+
+        oss << "Status indication, use `@~` to indicate as `cancelled`:" << std::endl;
+        auto status = [&](auto header, auto wip, auto done, auto expl){
+            oss                      << std::setw(4)               << " ";
+            oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(6)  << std::left << wip << termcolor::reset;
+            oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(12) << std::left << done << termcolor::reset;
+            oss                      << std::setw(6)  << std::left << expl;
+            oss << std::endl;
+        };
+        status(true, "WIP", "DONE", "Description");
+        status(false, "@r", "@R", "[R]equirements collection");
+        status(false, "@d", "@D", "[D]esigning the solution");
+        status(false, "@s", "@S", "[S]tarting development");
+        status(false, "@i", "@I", "[I]mplementing the solution");
+        status(false, "@v", "@V", "[V]alidation");
 
         oss << "Written by Geert Fannes" << std::endl;
         return oss.str();

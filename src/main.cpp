@@ -12,6 +12,7 @@ int main(int argc, const char **argv)
     Options options;
     MSS(options.parse(argc, argv), log::error() << "Could not parse the CLI arguments" << std::endl);
     log::set_verbosity_level(options.verbosity_level);
+    MSS(options.rearrange(), log::error() << "Could not rearrange the CLI arguments" << std::endl);
 
     if (options.print_help())
     {
