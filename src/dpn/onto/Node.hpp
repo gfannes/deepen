@@ -47,6 +47,8 @@ namespace dpn { namespace onto {
                 child.each_abs_linkpath(ftor);
         }
 
+        std::size_t child_type_count(Type) const;
+
         struct StreamConfig
         {
             enum Mode {Original, Export, Naft, List};
@@ -55,6 +57,7 @@ namespace dpn { namespace onto {
             const AbsFilepath__Node *abs_filepath__node = nullptr;
             unsigned int title_depth_offset = 0;
             std::optional<metadata::Item> filter;
+            bool detailed = false;
         };
         void stream(std::ostream &os, unsigned int level, const StreamConfig &stream_config) const;
 

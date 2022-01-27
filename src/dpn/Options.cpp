@@ -45,6 +45,7 @@ namespace dpn {
                     case State::Options:
                     if (false);
                     else if (is("-h", "--help"))            {verb_opt = Verb::Help;}
+                    else if (is("-d", "--detailed"))        {detailed = true;}
                     else if (is("-V", "--verbose"))         {MSS(argr.pop(verbosity_level),           log::error() << "Expected a valid verbosity level" << std::endl);}
                     else if (is("-i", "--input"))           {MSS(argr.pop(tmp),                       log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp);}
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
@@ -85,6 +86,9 @@ namespace dpn {
                 input_filepaths.splice(input_filepaths.end(), arguments);
                 break;
 
+                case Verb::List:
+                break;
+
                 default: break;
             }
         }
@@ -117,6 +121,7 @@ namespace dpn {
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");
+        option("-d", "--detailed", "", "Provide detailed information");
         option("-V", "--verbose", "<NUMBER>", "Set verbosity level [default: 0]");
         option("-i", "--input", "<FILEPATH>", "Add input filepath");
         option("-o", "--output", "<FILEPATH>", "Set output filepath");

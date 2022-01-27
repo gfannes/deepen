@@ -55,6 +55,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         onto::Node::StreamConfig stream_config;
+        stream_config.detailed = options_.detailed;
         stream_config.mode = onto::Node::StreamConfig::List;
         stream_config.abs_filepath__node = &abs_filepath__node_;
         if (!options_.tags.empty())
@@ -90,6 +91,7 @@ namespace dpn {
         }
 
         onto::Node::StreamConfig stream_config;
+        stream_config.detailed = options_.detailed;
         stream_config.mode = onto::Node::StreamConfig::Export;
         stream_config.abs_filepath__node = &abs_filepath__node_;
         if (!options_.tags.empty())

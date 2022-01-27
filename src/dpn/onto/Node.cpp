@@ -1,7 +1,18 @@
 #include <dpn/onto/Node.hpp>
+
+#include <termcolor/termcolor.hpp>
+
 #include <sstream>
 
 namespace dpn { namespace onto { 
+
+    std::size_t Node::child_type_count(Type wanted_type) const
+    {
+        std::size_t count = (type == wanted_type);
+        for (const auto &child: childs)
+            count += child.child_type_count(wanted_type);
+        return count;
+    }
 
     void Node::set_format(Format fmt)
     {
@@ -187,6 +198,8 @@ namespace dpn { namespace onto {
             case StreamConfig::Export:
             case StreamConfig::List:
                 {
+                    const auto is_list = (stream_config.mode == StreamConfig::List);
+
                     if (stream_config.filter)
                     {
                         const auto filter = *stream_config.filter;
@@ -202,13 +215,32 @@ namespace dpn { namespace onto {
                         switch (stream_config.mode)
                         {
                             case StreamConfig::Export: return true;
-                            case StreamConfig::List: return metadata.agg_down_global.total_todo().minutes > 0;
+
+                            case StreamConfig::List:
+                            if (metadata.agg_down_global.total_todo().minutes == 0)
+                                return false;
+                            switch (type)
+                            {
+                                case Type::Title: break;
+
+                                case Type::Line:
+                                if (!stream_config.detailed)
+                                    return false;
+                                if (depth == 0 && text.empty())
+                                    return false;
+                                break;
+
+                                default: return false; break;
+                            }
+                            return true;
+                            break;
+
                             default: return false;
                         }
                     }();
 
                     auto stream_metadata_for_list = [&](bool aggregate){
-                        if (stream_config.mode == StreamConfig::List)
+                        if (is_list)
                         {
                             metadata::Duration todo, effort;
                             if (aggregate)
@@ -257,10 +289,34 @@ namespace dpn { namespace onto {
                             os << ')';
                         }
                     };
+                    auto stream_colored = [&](const std::string &str){
+                        const auto use_colors = (stream_config.mode == StreamConfig::List);
+                        if (!use_colors)
+                            return;
+                        os << termcolor::colorize;
+                        switch (type)
+                        {
+                            case Type::Title:
+                            if (child_type_count(Type::Title) == 1 && !metadata.input.linkpath_abs)
+                                os << termcolor::green;
+                            else
+                                switch (stream_config.title_depth_offset+depth)
+                                {
+                                    case 1: break;
+                                    case 2: os << termcolor::red; break;
+                                    case 3: os << termcolor::yellow; break;
+                                    case 4: os << termcolor::magenta; break;
+                                    default: os << termcolor::blue; break;
+                                }
+                            break;
+
+                            default: os << termcolor::yellow; break;
+                        }
+                        os << str << termcolor::reset;
+                    };
 
                     if (do_show)
                     {
-
                         switch (type)
                         {
                             case Type::Title:
@@ -272,11 +328,13 @@ namespace dpn { namespace onto {
                             }
                             {
                                 if (is_cancelled) os << "~~";
-                                os << text;
+                                stream_colored(text);
                                 if (is_cancelled) os << "~~";
                             }
                             if (metadata.link)
-                                os << ' ' << metadata.link->key;
+                            {
+                                os << " => "; stream_colored(metadata.link->key);
+                            }
                             stream_metadata_for_export();
                             os << std::endl;
                             break;
@@ -291,14 +349,15 @@ namespace dpn { namespace onto {
                                     case Format::JIRA:     os << std::string(depth, '*') << (depth ? " " : ""); break;
                                 }
                             }
-                            os << text << std::endl;
+                            stream_colored(text);
+                            os << std::endl;
                             break;
 
                             case Type::CodeBlock:
                             switch (format)
                             {
-                                case Format::Markdown: os << "```"    << std::endl << text << "```" << std::endl; break;
-                                case Format::JIRA:     os << "{code}" << std::endl << text << "{code}" << std::endl; break;
+                                case Format::Markdown: os << "```"    << std::endl; stream_colored(text); os << "```" << std::endl; break;
+                                case Format::JIRA:     os << "{code}" << std::endl; stream_colored(text); os << "{code}" << std::endl; break;
                             }
                             break;
 

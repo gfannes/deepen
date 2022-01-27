@@ -27,6 +27,8 @@ namespace dpn {
 
         std::optional<onto::Format> format;
 
+        bool detailed = false;
+
         //Arguments
         std::list<std::string> arguments;
 
