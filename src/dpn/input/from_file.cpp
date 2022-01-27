@@ -1,26 +1,28 @@
 #include <dpn/input/from_file.hpp>
 #include <dpn/input/util.hpp>
 #include <dpn/log.hpp>
+
 #include <gubg/file/system.hpp>
 #include <gubg/string_algo/algo.hpp>
 #include <gubg/mss.hpp>
+
 #include <cassert>
 
 namespace dpn { namespace input { 
 
-    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath)
+    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath, const config::Config &config)
     {
         MSS_BEGIN(bool);
 
         std::string content;
         MSS(gubg::file::read(content, filepath), log::error() << "Could not read content from `" << filepath << "`" << std::endl);
 
-        MSS(load_from_string(file_node, content, filepath));
+        MSS(load_from_string(file_node, content, filepath, config));
 
         MSS_END();
     }
 
-    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath)
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath, const config::Config &config)
     {
         MSS_BEGIN(bool);
 
@@ -128,7 +130,7 @@ namespace dpn { namespace input {
             if (node_ptr)
             {
                 metadata::split(node_ptr->text, metadata_items, strange);
-                node_ptr->metadata.setup(metadata_items, filepath.parent_path());
+                node_ptr->metadata.setup(metadata_items, config, filepath.parent_path());
             }
         }
 

@@ -1,8 +1,11 @@
 #include <dpn/config/Config.hpp>
 #include <dpn/log.hpp>
+
 #include <gubg/naft/Range.hpp>
 #include <gubg/file/system.hpp>
 #include <gubg/mss.hpp>
+
+#include <optional>
 #include <cstdlib>
 
 namespace dpn { namespace config { 
@@ -20,17 +23,45 @@ namespace dpn { namespace config {
             if (false) {}
             else if (tag == "root")
             {
+                std::optional<std::string> fp_opt;
+                std::optional<std::string> name_opt;
                 for (std::string k,v; range.pop_attr(k,v); )
                 {
                     if (false) {}
-                    else if (k == "fp") roots.push_back(v);
+                    else if (k == "fp") fp_opt = v;
+                    else if (k == "name") name_opt = v;
                     else MSS(false, log::error() << "Unknown attribute `" << k << ":" << v << "` for tag `" << tag << "` in `" << filepath << "`" << std::endl);
                 }
+
+                MSS(!!fp_opt, log::error() << "Expected filepath to be set (attribute root.fp)" << std::endl);
+                const auto &fp = *fp_opt;
+
+                fps.push_back(fp);
+
+                if (name_opt)
+                    name__fp[*name_opt] = fp;
             }
             else MSS(false, log::error() << "Unknown config tag `" << tag << "` in `" << filepath << "`" << std::endl);
         }
 
         MSS_END();
+    }
+
+    std::string Config::substitute_names(const std::string &str) const
+    {
+        std::string res = str;
+        for (const auto &[name, fp]: name__fp)
+        {
+            const std::string name_esc = std::string("${")+name+"}";
+            while (true)
+            {
+                const auto ix = res.find(name_esc);
+                if (ix == std::string::npos)
+                    break;
+                res.replace(ix, name_esc.size(), fp);
+            }
+        }
+        return res;
     }
 
     bool get_default_config_filepath(std::string &filepath)

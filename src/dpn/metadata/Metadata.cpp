@@ -2,7 +2,7 @@
 
 namespace dpn { namespace metadata { 
 
-    void Metadata::setup(const std::vector<Item> &items, const std::filesystem::path &cwd)
+    void Metadata::setup(const std::vector<Item> &items, const config::Config &config, const std::filesystem::path &cwd)
     {
         clear();
 
@@ -16,8 +16,11 @@ namespace dpn { namespace metadata {
                 if (item.is_link)
                 {
                     link = item;
-                    input.linkpath_rel = item.value;
-                    input.linkpath_abs = (cwd / item.value).lexically_normal();
+                    std::filesystem::path filepath = config.substitute_names(item.value);
+                    input.linkpath_rel = filepath;
+                    if (!filepath.is_absolute())
+                        filepath = cwd / filepath;
+                    input.linkpath_abs = filepath.lexically_normal();
                 }
                 else if (item.key.empty())
                 {

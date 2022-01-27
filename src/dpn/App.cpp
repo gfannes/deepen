@@ -131,7 +131,7 @@ namespace dpn {
         gubg::naft::Document doc{std::cout};
         unsigned int ok_count = 0;
         std::list<std::string> fails;
-        for (const auto &root: config_.roots)
+        for (const auto &root: config_.fps)
         {
             try
             {
@@ -194,9 +194,8 @@ namespace dpn {
         AbsFilepaths abs_filepaths;
         for (const auto &filepath: options_.input_filepaths)
         {
-            root_.childs.emplace_back(onto::Type::Link);
-            auto &link = root_.childs.back();
-            link.metadata.input.linkpath_rel = filepath;
+            auto &link = root_.childs.emplace_back(onto::Type::Link);
+            link.metadata.input.linkpath_rel = config_.substitute_names(filepath);
             const auto filepath_abs = std::filesystem::absolute(filepath);
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
@@ -211,7 +210,7 @@ namespace dpn {
                 {
                     auto &node = abs_filepath__node_[abs_filepath];
                     log::os(1) << "Loading `" << abs_filepath << "`" << std::endl;
-                    MSS(input::load_from_file(node, abs_filepath));
+                    MSS(input::load_from_file(node, abs_filepath, config_));
 
                     auto insert_into_abs_filepaths = [&](const auto &new_abs_filepath){
                         abs_filepaths.insert(new_abs_filepath);

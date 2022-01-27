@@ -7,8 +7,8 @@
 
 namespace dpn { namespace input { 
 
-    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath);
-    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath);
+    bool load_from_file(onto::Node &file_node, const std::filesystem::path &filepath, const config::Config &config);
+    bool load_from_string(onto::Node &file_node, const std::string &content, const std::filesystem::path &filepath, const config::Config &config);
 
     //Privates
     bool standardize_depths_(onto::Nodes &nodes, bool unit_step);
