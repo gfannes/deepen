@@ -214,7 +214,7 @@ namespace dpn { namespace onto {
                     const auto do_show = [&](){
                         switch (stream_config.mode)
                         {
-                            case StreamConfig::Export: return true;
+                            case StreamConfig::Export: return true; break;
 
                             case StreamConfig::List:
                             if (metadata.agg_down_global.total_todo().minutes == 0)
@@ -235,7 +235,7 @@ namespace dpn { namespace onto {
                             return true;
                             break;
 
-                            default: return false;
+                            default: return false; break;
                         }
                     }();
 
@@ -292,7 +292,10 @@ namespace dpn { namespace onto {
                     auto stream_colored = [&](const std::string &str){
                         const auto use_colors = (stream_config.mode == StreamConfig::List);
                         if (!use_colors)
+                        {
+                            os << str;
                             return;
+                        }
                         os << termcolor::colorize;
                         switch (type)
                         {
