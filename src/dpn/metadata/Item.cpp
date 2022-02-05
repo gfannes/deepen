@@ -1,4 +1,5 @@
 #include <dpn/metadata/Item.hpp>
+#include <dpn/metadata/Status.hpp>
 #include <gubg/mss.hpp>
 
 namespace dpn { namespace metadata { 
@@ -63,6 +64,22 @@ namespace dpn { namespace metadata {
             return;
         }
 
+        bool is_blocked = false;
+        auto pop_jira_status = [&](){
+            if (line.pop_if("(/)"))
+            {
+                items.emplace_back(Item::User, "", "V");
+                line.ltrim(' ');
+                return true;
+            }
+            if (line.pop_if("(x)"))
+            {
+                is_blocked = true;
+                line.ltrim(' ');
+                return true;
+            }
+            return false;
+        };
         auto is_start_of_metadata = [&](){
             if (line.empty())
                 return false;
@@ -75,9 +92,33 @@ namespace dpn { namespace metadata {
                 items.push_back(item);
                 line.ltrim(' ');
             }
+            if (is_blocked)
+            {
+                //Find status item
+                auto it = std::find_if(items.begin(), items.end(), [&](const auto &item){Status status; return item.key.empty() && status.parse(item.value);});
+                //Add one if not found
+                if (it == items.end())
+                {
+                    std::cout << "Could not find status" << std::endl;
+                    Status status;
+                    items.emplace_back(Item{status.to_string()});
+                    it = items.end()-1;
+                }
+                else
+                {
+                    std::cout << "Found status: " << it->value << std::endl;
+                }
+                Status status;
+                status.parse(it->value);
+                if (status.state == State::Active)
+                    status.state = State::Blocked;
+                it->value = status.to_string();
+                std::cout << "New status: " << it->value << std::endl;
+            }
         };
 
         text.clear();
+        while (pop_jira_status()){}
         if (is_start_of_metadata())
         {
             parse_metadata_items();
@@ -95,6 +136,9 @@ namespace dpn { namespace metadata {
             text.push_back(' ');
         }
         text += line.str();
+
+        //Necessary to add a dummy status if is_blocked was set to true
+        parse_metadata_items();
     }
 
 } }

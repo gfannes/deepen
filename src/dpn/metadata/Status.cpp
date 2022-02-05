@@ -60,6 +60,8 @@ namespace dpn { namespace metadata {
         if (false) {}
         else if (strange.pop_if('~'))
             state = State::Cancelled;
+        else if (strange.pop_if('x'))
+            state = State::Blocked;
         else
             state = State::Active;
 
@@ -68,19 +70,26 @@ namespace dpn { namespace metadata {
 
     void Status::stream(std::ostream &os) const
     {
+        os << to_string();
+    }
+    std::string Status::to_string() const
+    {
+        std::string str;
         switch (flow)
         {
-            case Flow::Requirement:    os << (done ? 'R' : 'r'); break;
-            case Flow::Design:         os << (done ? 'D' : 'd'); break;
-            case Flow::Starting:       os << (done ? 'S' : 's'); break;
-            case Flow::Implementation: os << (done ? 'I' : 'i'); break;
-            case Flow::Validation:     os << (done ? 'V' : 'v'); break;
+            case Flow::Requirement:    str.push_back(done ? 'R' : 'r'); break;
+            case Flow::Design:         str.push_back(done ? 'D' : 'd'); break;
+            case Flow::Starting:       str.push_back(done ? 'S' : 's'); break;
+            case Flow::Implementation: str.push_back(done ? 'I' : 'i'); break;
+            case Flow::Validation:     str.push_back(done ? 'V' : 'v'); break;
         }
         switch (state)
         {
             case State::Active: break;
-            case State::Cancelled: os << '~'; break;
+            case State::Cancelled: str.push_back('~'); break;
+            case State::Blocked: str.push_back('x'); break;
         }
+        return str;
     }
 
     Status Status::minimum(const Status &lhs, const Status &rhs)

@@ -135,6 +135,19 @@ namespace dpn { namespace onto {
                             os << prefix << e;
                         };
 
+                        if (format == Format::JIRA && metadata.input.status)
+                        {
+                            const auto &status = *metadata.input.status;
+                            if (status.state == metadata::State::Blocked)
+                            {
+                                stream("", "(x)");
+                            }
+                            else if (status == metadata::Status{metadata::Flow::Validation, true})
+                            {
+                                stream("", "(/)");
+                            }
+                        }
+
                         if (!text.empty())
                             stream("", text);
 
@@ -211,13 +224,14 @@ namespace dpn { namespace onto {
                     }
 
                     const auto is_cancelled = metadata.agg_up.status.state == metadata::State::Cancelled;
+                    const auto is_blocked = metadata.agg_up.status.state == metadata::State::Blocked;
                     const auto do_show = [&](){
                         switch (stream_config.mode)
                         {
                             case StreamConfig::Export: return true; break;
 
                             case StreamConfig::List:
-                            if (metadata.agg_down_global.total_todo().minutes == 0)
+                            if (!is_blocked && metadata.agg_down_global.total_todo().minutes == 0)
                                 return false;
                             switch (type)
                             {
@@ -261,6 +275,8 @@ namespace dpn { namespace onto {
                             else
                             {
                                 if (is_cancelled)
+                                    os << "  ~  ";
+                                else if (is_blocked)
                                     os << "  X  ";
                                 else if (todo.minutes == 0)
                                     os << "  V  ";
@@ -286,6 +302,7 @@ namespace dpn { namespace onto {
                             const auto &agg = metadata.agg_down_global;
                             os << " (" << agg.total_todo() << "/" << agg.total_effort << ", " << agg.pct_done() << '%';
                             if (is_cancelled) os << ", cancelled";
+                            if (is_blocked) os << ", blocked";
                             os << ')';
                         }
                     };
@@ -297,23 +314,30 @@ namespace dpn { namespace onto {
                             return;
                         }
                         os << termcolor::colorize;
-                        switch (type)
+                        if (is_blocked)
                         {
-                            case Type::Title:
-                            if (child_type_count(Type::Title) == 1 && !metadata.input.linkpath_abs)
-                                os << termcolor::green;
-                            else
-                                switch (stream_config.title_depth_offset+depth)
-                                {
-                                    case 1: break;
-                                    case 2: os << termcolor::red; break;
-                                    case 3: os << termcolor::yellow; break;
-                                    case 4: os << termcolor::magenta; break;
-                                    default: os << termcolor::blue; break;
-                                }
-                            break;
+                            os << termcolor::red;
+                        }
+                        else
+                        {
+                            switch (type)
+                            {
+                                case Type::Title:
+                                if (child_type_count(Type::Title) == 1 && !metadata.input.linkpath_abs)
+                                    os << termcolor::green;
+                                else
+                                    switch (stream_config.title_depth_offset+depth)
+                                    {
+                                        case 1: break;
+                                        case 2: os << termcolor::yellow; break;
+                                        // case 3: os << termcolor::yellow; break;
+                                        // case 4: os << termcolor::magenta; break;
+                                        default: os << termcolor::blue; break;
+                                    }
+                                break;
 
-                            default: os << termcolor::yellow; break;
+                                default: os << termcolor::yellow; break;
+                            }
                         }
                         os << str << termcolor::reset;
                     };
@@ -330,6 +354,7 @@ namespace dpn { namespace onto {
                                 case Format::JIRA:     os << 'h' << stream_config.title_depth_offset+depth << ". "; break;
                             }
                             {
+                                if (is_blocked) os << "(x) ";
                                 if (is_cancelled) os << "~~";
                                 stream_colored(text);
                                 if (is_cancelled) os << "~~";
@@ -368,8 +393,10 @@ namespace dpn { namespace onto {
                         }
                     }
 
-                    if (!is_cancelled)
+                    if (!is_cancelled && !is_blocked)
                     {
+                        //Continue streaming recursively
+
                         if (metadata.input.linkpath_abs)
                         {
                             if (stream_config.abs_filepath__node)

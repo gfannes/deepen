@@ -16,12 +16,15 @@ namespace dpn { namespace metadata {
 
         Status() {}
         Status(Flow flow, bool done): flow(flow), done(done) {}
+        Status(Flow flow, bool done, State state): flow(flow), done(done), state(state) {}
 
         double fraction_done() const;
         double fraction_effort() const;
 
         bool parse(gubg::Strange &strange);
+        bool parse(const std::string &str) {gubg::Strange strange{str}; return parse(strange);}
         void stream(std::ostream &os) const;
+        std::string to_string() const;
 
         static Status minimum(const Status &lhs, const Status &rhs);
 

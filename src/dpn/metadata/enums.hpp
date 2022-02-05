@@ -10,7 +10,7 @@ namespace dpn { namespace metadata {
 
     enum class State
     {
-        Active, Cancelled,
+        Active, Cancelled, Blocked
     };
 
 } }
