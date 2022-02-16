@@ -2,6 +2,28 @@
 
 Utilities, format and process to gradually deepen your understanding of a project
 
+## Installation
+
+* Install [gubg](https://github.com/gfannes/gubg)
+```
+git clone https://github.com/gfannes/gubg
+cd gubg
+git submodule update --init --recursive
+export gubg=`pwd`
+rake uth
+rake prepare
+export RUBYLIB=$gubg/ruby
+export PATH=$PATH:$gubg/bin
+cd ..
+```
+* Install deepen
+```
+git clone https://github.com/gfannes/deepen
+cd deepen
+ln -s $gubg gubg
+rake install
+```
+
 # List of emoticons
 
 https://github.com/ikatyang/emoji-cheat-sheet

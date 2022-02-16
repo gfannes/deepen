@@ -1,4 +1,4 @@
-include("../../gubg/recipes.chai")
+include("gubg/recipes.chai")
 
 root.book("dpn", fun(b){
     b.recipe("func", fun(rcp){
