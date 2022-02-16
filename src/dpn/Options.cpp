@@ -135,7 +135,7 @@ namespace dpn {
         option("", "update|Update", "", "Input filepaths");
 
         oss << "Status indication, use `@X~` to indicate as `cancelled`:" << std::endl;
-        auto status = [&](auto header, auto wip, auto done, auto expl){
+        auto status = [&](bool header, const char *wip, const char *done, const char *expl){
             oss                      << std::setw(4)               << " ";
             oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(6)  << std::left << wip << termcolor::reset;
             oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(12) << std::left << done << termcolor::reset;

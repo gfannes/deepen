@@ -33,7 +33,7 @@ task :build => :prepare do
     cpp_version = {gcc: "2a", msvc: :latest, clang: "17"}[toolchain]
     target = {macos: "-T target=x86_64-apple-macos11.3"}[GUBG.os()]
     compiler, linker = nil, nil
-    if true
+    if false
         compiler = "-T compiler=gcc-9"
         linker = "-T linker=g++-9"
     end
