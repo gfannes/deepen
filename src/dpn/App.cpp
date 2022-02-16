@@ -16,7 +16,8 @@ namespace dpn {
         std::string filepath;
         MSS(config::get_default_config_filepath(filepath));
 
-        MSS(config_.load_from_file(filepath));
+        if (!config_.load_from_file(filepath))
+            log::warning() << "Could not load the configuration from file, using an empty configuration" << std::endl;
 
         MSS_END();
     }
