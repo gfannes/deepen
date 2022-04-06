@@ -137,8 +137,8 @@ namespace dpn {
         oss << "Status indication, use `@X~` to indicate as `cancelled`:" << std::endl;
         auto status = [&](bool header, const char *wip, const char *done, const char *expl){
             oss                      << std::setw(4)               << " ";
-            oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(6)  << std::left << wip << termcolor::reset;
-            oss << (header ? termcolor::blue : termcolor::yellow) << std::setw(12) << std::left << done << termcolor::reset;
+            oss << (header ? termcolor::blue<char> : termcolor::yellow<char>) << std::setw(6)  << std::left << wip << termcolor::reset;
+            oss << (header ? termcolor::blue<char> : termcolor::yellow<char>) << std::setw(12) << std::left << done << termcolor::reset;
             oss                      << std::setw(6)  << std::left << expl;
             oss << std::endl;
         };
