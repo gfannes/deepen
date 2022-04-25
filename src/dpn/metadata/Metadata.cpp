@@ -17,7 +17,7 @@ namespace dpn { namespace metadata {
                 {
                     link = item;
                     std::filesystem::path filepath = config.substitute_names(item.value);
-                    input.linkpath_rel = filepath;
+                    input.linkpath_rel = filepath.string();
                     if (!filepath.is_absolute())
                         filepath = cwd / filepath;
                     input.linkpath_abs = filepath.lexically_normal();
