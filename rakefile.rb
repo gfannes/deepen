@@ -1,9 +1,8 @@
-require("gubg/shared")
+require_relative(File.join(ENV["gubg"], "gubg.build/load"))
 
 task :default do
     sh "rake -T"
 end
-
 
 desc "Install"
 task :install => :build do
