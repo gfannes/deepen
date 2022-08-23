@@ -1,6 +1,7 @@
 #include <dpn/metadata/Item.hpp>
 #include <dpn/metadata/Status.hpp>
 #include <gubg/mss.hpp>
+#include <algorithm>
 
 namespace dpn { namespace metadata { 
 
