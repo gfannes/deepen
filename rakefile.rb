@@ -26,6 +26,7 @@ end
 
 desc "Build"
 task :build => :prepare do
+    # Warning: for some reason, reading files in debug mode fails with GCC12 with below settings
     mode = :debug
     mode = :release
     toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]

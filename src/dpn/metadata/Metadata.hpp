@@ -7,6 +7,7 @@
 #include <dpn/log.hpp>
 #include <dpn/config/Config.hpp>
 
+#include <gubg/std/filesystem.hpp>
 #include <gubg/mss.hpp>
 
 #include <vector>
@@ -14,7 +15,6 @@
 #include <map>
 #include <optional>
 #include <cmath>
-#include <filesystem>
 
 namespace dpn { namespace metadata { 
 

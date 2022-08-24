@@ -1,10 +1,12 @@
 #include <dpn/App.hpp>
 #include <dpn/log.hpp>
 #include <dpn/input/from_file.hpp>
+
 #include <gubg/naft/Document.hpp>
+#include <gubg/std/filesystem.hpp>
 #include <gubg/mss.hpp>
+
 #include <fstream>
-#include <filesystem>
 #include <list>
 
 namespace dpn { 
@@ -191,7 +193,9 @@ namespace dpn {
     {
         MSS_BEGIN(bool);
 
-        MSS(!options_.input_filepaths.empty());
+        MSS(!options_.input_filepaths.empty(), log::error() << "Cannot load ontology without input filepaths" << std::endl);
+
+        library_.clear();
 
         using AbsFilepaths = std::set<std::filesystem::path>;
         AbsFilepaths abs_filepaths;
@@ -202,6 +206,8 @@ namespace dpn {
             const auto filepath_abs = std::filesystem::absolute(filepath);
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
+
+            library_.add_file(filepath_abs);
         }
 
         //Load all the nodes with a metadata.input.linkpath from file

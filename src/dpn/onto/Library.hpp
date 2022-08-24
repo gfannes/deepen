@@ -2,7 +2,9 @@
 #define HEADER_dpn_onto_Library_hpp_ALREADY_INCLUDED
 
 #include <dpn/onto/File.hpp>
-#include <string>
+
+#include <gubg/std/filesystem.hpp>
+
 #include <map>
 
 namespace dpn { namespace onto { 
@@ -10,10 +12,12 @@ namespace dpn { namespace onto {
 	class Library
 	{
 	public:
-		bool add_file(const std::string &fp);
+		void clear();
+
+		bool add_file(const std::filesystem::path &fp);
 
 	private:
-		std::map<std::string, File> fp__file_;
+		std::map<std::filesystem::path, File> fp__file_;
 	};
 
 } } 
