@@ -28,9 +28,9 @@ desc "Build"
 task :build => :prepare do
     # Warning: for some reason, reading files in debug mode fails with GCC12 with below settings
     mode = :debug
-    mode = :release
+    # mode = :release
     toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
-    cpp_version = {gcc: "2a", msvc: :latest, clang: "17"}[toolchain]
+    cpp_version = {gcc: "17", msvc: :latest, clang: "17"}[toolchain]
     target = {macos: "-T target=x86_64-apple-macos11.3"}[GUBG.os()]
     compiler, linker = nil, nil
     if false

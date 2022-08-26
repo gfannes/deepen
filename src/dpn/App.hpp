@@ -3,7 +3,7 @@
 
 #include <dpn/Options.hpp>
 #include <dpn/config/Config.hpp>
-#include <dpn/onto/Library.hpp>
+#include <dpn/Library.hpp>
 #include <dpn/onto/Node.hpp>
 
 namespace dpn { 
@@ -29,7 +29,7 @@ namespace dpn {
         bool load_tags_(metadata::Ns__Values &) const;
 
         bool load_ontology_();
-        onto::Library library_;
+        Library library_;
         onto::AbsFilepath__Node abs_filepath__node_;
         onto::Node root_{onto::Type::Root};
     };

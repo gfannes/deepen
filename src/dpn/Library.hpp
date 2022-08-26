@@ -1,13 +1,13 @@
-#ifndef HEADER_dpn_onto_Library_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_onto_Library_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_Library_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_Library_hpp_ALREADY_INCLUDED
 
-#include <dpn/onto/File.hpp>
+#include <dpn/File.hpp>
 
 #include <gubg/std/filesystem.hpp>
 
 #include <map>
 
-namespace dpn { namespace onto { 
+namespace dpn { 
 
 	class Library
 	{
@@ -20,6 +20,6 @@ namespace dpn { namespace onto {
 		std::map<std::filesystem::path, File> fp__file_;
 	};
 
-} } 
+} 
 
 #endif

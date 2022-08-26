@@ -1,4 +1,4 @@
-#include <dpn/onto/Library.hpp>
+#include <dpn/Library.hpp>
 #include <dpn/log.hpp>
 
 #include <gubg/file/system.hpp>
@@ -6,7 +6,7 @@
 
 #include <optional>
 
-namespace dpn { namespace onto { 
+namespace dpn { 
 	void Library::clear()
 	{
 		*this = Library{};
@@ -36,4 +36,4 @@ namespace dpn { namespace onto {
 		MSS_END();
 	}
 
-} } 
+} 
