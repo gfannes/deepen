@@ -9,7 +9,7 @@
 
 namespace dpn { namespace read { 
 
-	bool markdown(onto::Nodes &nodes, const std::string &str)
+	bool markdown(onto::Nodes &nodes, const std::string &text)
 	{
 		MSS_BEGIN(bool, "");
 
@@ -18,13 +18,33 @@ namespace dpn { namespace read {
 		std::vector<onto::Nodes *> nodes_stack;
 		nodes_stack.push_back(&nodes);
 
-		Reader reader{str};
+		Reader reader{text};
 
 		for (Reader::Item item; reader(item); )
 		{
+			L(item);
 			switch (item.what)
 			{
-				case Reader::Item::Heading:
+				case Reader::Item::HeadingOpen:
+				case Reader::Item::BulletOpen:
+				{
+					auto &node = nodes_stack.back()->emplace_back();
+					node.text = item.text;
+					node.depth = item.level;
+					nodes_stack.push_back(&node.childs);
+				}
+				break;
+
+				case Reader::Item::HeadingClose:
+				case Reader::Item::BulletClose:
+				nodes_stack.pop_back();
+				break;
+
+				case Reader::Item::Line:
+				{
+					auto &node = nodes_stack.back()->emplace_back();
+					node.text = item.text;
+				}
 				break;
 			}
 		}
@@ -33,7 +53,7 @@ namespace dpn { namespace read {
 		MSS_END();
 	}
 
-	bool naft(onto::Nodes &nodes, const std::string &str)
+	bool naft(onto::Nodes &nodes, const std::string &text)
 	{
 		MSS_BEGIN(bool);
 
@@ -41,7 +61,7 @@ namespace dpn { namespace read {
 		MSS_END();
 	}
 
-	bool freemind(onto::Nodes &nodes, const std::string &str)
+	bool freemind(onto::Nodes &nodes, const std::string &text)
 	{
 		MSS_BEGIN(bool);
 

@@ -36,6 +36,7 @@ See RICE system: reach, impact, confidence, effort
 # Command
 
 * `&command:argument`
+** .? How can you indicate an include should be added at the top level? There is for .md no mechanism to close a Heading.
 
 # Metadata
 

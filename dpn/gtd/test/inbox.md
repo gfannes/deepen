@@ -1,3 +1,3 @@
 # .? Inbox item 1
 
-# .? Inbox item 2
+&include:item2.md

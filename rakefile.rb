@@ -9,10 +9,35 @@ task :install => :build do
     sh "cp dpn.app #{ENV["gubg"]}/bin/dpn"
 end
 
+def cooker(&block)
+    require("gubg/build/Cooker")
+    c = GUBG::Build::Cooker.new
+
+    toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
+    c.toolchain(toolchain)
+
+    cpp_version = {gcc: "17", msvc: :latest, clang: "17"}[toolchain]
+    c.option("c++.std", cpp_version)
+
+    case GUBG.os()
+    when :linux
+    when :macos
+        c.option("target", "x86_64-apple-macos11.3")
+    when :windows
+    end
+
+    block.yield(c)
+end
+
 desc "Create compile_commands.json database"
 task :cc => :prepare do
-    sh "cook -g ninja"
-    sh "ninja -t compdb > compile_commands.json"
+    cooker do |c|
+        mode = :debug
+        # mode = :release
+        c.option(mode)
+        c.generate(:ninja, "dpn/app")
+        c.ninja_compdb()
+    end
 end
 
 task :prepare do
@@ -26,19 +51,13 @@ end
 
 desc "Build"
 task :build => :prepare do
-    # Warning: for some reason, reading files in debug mode fails with GCC12 with below settings
-    mode = :debug
-    # mode = :release
-    toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
-    cpp_version = {gcc: "17", msvc: :latest, clang: "17"}[toolchain]
-    target = {macos: "-T target=x86_64-apple-macos11.3"}[GUBG.os()]
-    compiler, linker = nil, nil
-    if false
-        compiler = "-T compiler=gcc-9"
-        linker = "-T linker=g++-9"
+    cooker do |c|
+        mode = :debug
+        # mode = :release
+        c.option(mode)
+        c.generate(:ninja, "dpn/app")
+        c.ninja()
     end
-    sh "cook -g ninja -t #{toolchain} -T c++.std=#{cpp_version} -T #{mode} #{compiler} #{linker} -O .cook/#{mode} dpn/app"
-    sh "ninja -v"
 end
 
 desc "Clean"
@@ -54,13 +73,15 @@ desc "Run unit tests, filter is colon-separated selection filter"
 task :ut, [:filter] => :prepare do |t,args|
     filter = (args[:filter] || "ut").split(":").map{|e|"[#{e}]"}*""
 
-    mode = :debug
-    # mode = :release
-    sh "cook -g ninja -T c++.std=2a -T #{mode} -O .cook/#{mode} dpn/ut"
-    sh "ninja -v"
-
-    cmd = "./dpn.ut -d yes -a".split(" ") << filter
-    sh(*cmd)
+    cooker do |c|
+        mode = :debug
+        # mode = :release
+        c.option(mode)
+        c.generate(:ninja, "dpn/ut")
+        c.ninja()
+        args = %w[-d yes -a]+filter
+        c.run(*args)
+    end
 end
 
 desc "Run end-to-end tests"

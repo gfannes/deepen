@@ -26,7 +26,7 @@ namespace dpn {
 
     bool App::run()
     {
-        MSS_BEGIN(bool);
+        MSS_BEGIN(bool, "");
 
         MSS(!!options_.verb_opt, log::error() << "No verb was specified" << std::endl);
         const auto verb = *options_.verb_opt;
@@ -207,8 +207,10 @@ namespace dpn {
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
 
-            library_.add_file(filepath_abs);
+            MSS(library_.add_file(filepath_abs));
         }
+
+        MSS(library_.resolve());
 
         //Load all the nodes with a metadata.input.linkpath from file
         while (abs_filepaths.size() != abs_filepath__node_.size())

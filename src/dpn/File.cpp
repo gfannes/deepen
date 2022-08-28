@@ -22,6 +22,36 @@ namespace dpn {
 		MSS_END();
 	}
 
+	bool File::interpret()
+	{
+		MSS_BEGIN(bool);
+
+		auto interpret = [&](auto &n){
+			std::string text;
+			for (gubg::Strange strange{n.text}; !strange.empty(); )
+			{
+				if (strange.pop_if('&'))
+				{
+					gubg::Strange command;
+					strange.pop_until(command, ' ') || strange.pop_all(command);
+					auto &cmd = n.commands.emplace_back();
+					if (command.pop_until(cmd.first, ':'))
+						command.pop_all(cmd.second);
+					else
+						command.pop_all(cmd.first);
+				}
+				else
+				{
+					strange.pop_all(text);
+				}
+			}
+			n.text = text;
+		};
+		each_node(interpret);
+
+		MSS_END();
+	}
+
 	// Free functions
 	std::ostream &operator<<(std::ostream &os, File::Format format)
 	{

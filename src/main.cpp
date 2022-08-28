@@ -5,7 +5,7 @@
 
 int main(int argc, const char **argv)
 {
-    MSS_BEGIN(int);
+    MSS_BEGIN(int, "");
 
     using namespace dpn;
 

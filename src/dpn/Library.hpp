@@ -16,7 +16,11 @@ namespace dpn {
 
 		bool add_file(const std::filesystem::path &fp);
 
+		bool resolve();
+
 	private:
+		bool resolve_include_(std::filesystem::path &fp, const std::string &incl, const std::filesystem::path &context_fp) const;
+
 		std::map<std::filesystem::path, File> fp__file_;
 	};
 

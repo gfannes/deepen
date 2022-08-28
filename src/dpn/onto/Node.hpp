@@ -11,8 +11,11 @@
 #include <map>
 #include <optional>
 #include <ostream>
+#include <utility>
 
 namespace dpn { namespace onto { 
+
+    using Command = std::pair<std::string, std::string>;
 
     class Node
     {
@@ -27,6 +30,8 @@ namespace dpn { namespace onto {
 
         std::vector<Node> childs;
         metadata::Metadata metadata;
+
+        std::vector<Command> commands;
 
         Node() {}
         Node(Type type): type(type) {}
