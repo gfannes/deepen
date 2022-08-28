@@ -44,6 +44,14 @@ namespace dpn {
 
             case Verb::Run:                     MSS(run_command_(), log::error() << "Could not run command" << std::endl); break;
 
+            case Verb::Print:                   MSS(print_(),       log::error() << "Could not print" << std::endl); break;
+
+            case Verb::Inbox:                   MSS(show_list_(meta::State::Inbox),       log::error() << "Could not work on Inbox items" << std::endl); break;
+            case Verb::Actionable:              MSS(show_list_(meta::State::Actionable),  log::error() << "Could not work on Actionable items" << std::endl); break;
+            case Verb::Forwarded:               MSS(show_list_(meta::State::Forwarded),   log::error() << "Could not work on Forwarded items" << std::endl); break;
+            case Verb::WIP:                     MSS(show_list_(meta::State::WIP),         log::error() << "Could not work on WIP items" << std::endl); break;
+            case Verb::Duedate:                 MSS(show_list_due_(),                     log::error() << "Could not work on items with Duedate" << std::endl); break;
+
             default:                            MSS(false,          log::error() << "Unknown verb " << (int)verb << std::endl); break;
         }
 
@@ -51,6 +59,64 @@ namespace dpn {
     }
 
     //Privates
+    void App::show_items_(const List &list) const
+    {
+        std::cout << "{" << std::endl;
+        for (auto item: list.items)
+        {
+            std::cout << "  [" << item.text << "](fp:" << item.fp << ")";
+            if (item.state)
+                std::cout << "(state:" << *item.state << ")";
+            std::cout << "(prio:" << item.prio << ")(cost:" << item.cost << ")(rice:" << item.rice() << ")";
+            if (item.yyyymmdd)
+                std::cout << "(due:" << *item.yyyymmdd << ")";
+            std::cout << std::endl;
+        }
+        std::cout << "}" << std::endl;
+    }
+
+    bool App::show_list_(meta::State state)
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        List list;
+        MSS(library_.get(list, state));
+        list.sort_on_rice();
+        std::cout << "[" << state << "](size:" << list.items.size() << ")" << std::endl;
+        show_items_(list);
+
+        MSS_END();
+    }
+
+    bool App::show_list_due_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        List list;
+        MSS(library_.get_due(list));
+        list.sort_on_duedate();
+        std::cout << "[Duedate](size:" << list.items.size() << ")" << std::endl;
+        show_items_(list);
+        
+        MSS_END();
+    }
+
+    bool App::print_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        library_.print(std::cout);
+
+        MSS_END();
+    }
+
+
     bool App::list_()
     {
         MSS_BEGIN(bool);
@@ -228,62 +294,62 @@ namespace dpn {
                     };
                     node.each_abs_linkpath(insert_into_abs_filepaths);
                 }
-        }
+            }
 
-        {
-            metadata::Ns__Values ns__values;
-            MSS(load_tags_(ns__values));
+            {
+                metadata::Ns__Values ns__values;
+                MSS(load_tags_(ns__values));
 
             //Aggregate metadata
-            root_.aggregate_metadata(nullptr, ns__values);
-            for (auto &[_, node]: abs_filepath__node_)
-                node.aggregate_metadata(nullptr, ns__values);
-        }
+                root_.aggregate_metadata(nullptr, ns__values);
+                for (auto &[_, node]: abs_filepath__node_)
+                    node.aggregate_metadata(nullptr, ns__values);
+            }
 
         //Merge linkpaths until stable
-        while (true)
-        {
-            unsigned int count = 0u;
-            root_.merge_linkpaths(count, abs_filepath__node_);
+            while (true)
+            {
+                unsigned int count = 0u;
+                root_.merge_linkpaths(count, abs_filepath__node_);
+                for (auto &[_, node]: abs_filepath__node_)
+                    node.merge_linkpaths(count, abs_filepath__node_);
+                if (count == 0)
+                    break;
+            }
+
+            MSS(root_.aggregate_linkpaths(abs_filepath__node_));
             for (auto &[_, node]: abs_filepath__node_)
-                node.merge_linkpaths(count, abs_filepath__node_);
-            if (count == 0)
-                break;
+            {
+                MSS(node.aggregate_linkpaths(abs_filepath__node_));
+            }
+
+            log::os(2) << root_;
+            for (const auto &[abs_filepath, node]: abs_filepath__node_)
+            {
+                log::os(2) << std::endl << abs_filepath << std::endl;
+                log::os(2) << node;
+            }
+
+            MSS_END();
         }
 
-        MSS(root_.aggregate_linkpaths(abs_filepath__node_));
-        for (auto &[_, node]: abs_filepath__node_)
+        bool App::load_tags_(metadata::Ns__Values &ns__values) const
         {
-            MSS(node.aggregate_linkpaths(abs_filepath__node_));
+            MSS_BEGIN(bool);
+
+            ns__values.clear();
+
+            metadata::Item item;
+            for (const auto &tag: options_.tags)
+            {
+                std::string tmp = "@"; tmp += tag;
+                gubg::Strange strange{tmp};
+                MSS(item.parse(strange), log::error() << "Tag `" << tag << "` has incorrect format" << std::endl);
+
+                ns__values[item.key].insert(item.value);
+            }
+
+            MSS_END();
         }
 
-        log::os(2) << root_;
-        for (const auto &[abs_filepath, node]: abs_filepath__node_)
-        {
-            log::os(2) << std::endl << abs_filepath << std::endl;
-            log::os(2) << node;
-        }
-
-        MSS_END();
     }
-
-    bool App::load_tags_(metadata::Ns__Values &ns__values) const
-    {
-        MSS_BEGIN(bool);
-
-        ns__values.clear();
-
-        metadata::Item item;
-        for (const auto &tag: options_.tags)
-        {
-            std::string tmp = "@"; tmp += tag;
-            gubg::Strange strange{tmp};
-            MSS(item.parse(strange), log::error() << "Tag `" << tag << "` has incorrect format" << std::endl);
-
-            ns__values[item.key].insert(item.value);
-        }
-
-        MSS_END();
-    }
-
-}

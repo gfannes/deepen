@@ -39,6 +39,12 @@ namespace dpn {
                     else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                     else if (is("e", "export")) {verb_opt = Verb::Export;}
                     else if (is("r", "run"))    {verb_opt = Verb::Run;}
+                    else if (is("p", "print"))  {verb_opt = Verb::Print;}
+                    else if (is("i", "inbox"))  {verb_opt = Verb::Inbox;}
+                    else if (is("a", "action")) {verb_opt = Verb::Actionable;}
+                    else if (is("f", "forward")){verb_opt = Verb::Forwarded;}
+                    else if (is("w", "wip"))    {verb_opt = Verb::WIP;}
+                    else if (is("d", "due"))    {verb_opt = Verb::Duedate;}
                     state = State::Options;
                     break;
 
@@ -118,6 +124,12 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
+        option("p", "print", "", "Print loaded library");
+        option("i", "inbox", "", "Work on Inbox items");
+        option("a", "action", "", "Work on Actionable items");
+        option("f", "forward", "", "Work on Forwarded items");
+        option("w", "wip", "", "Work on WIP items");
+        option("d", "due", "", "Work on items with Duedate");
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");

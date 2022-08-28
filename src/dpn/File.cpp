@@ -1,7 +1,9 @@
 #include <dpn/File.hpp>
 #include <dpn/log.hpp>
 #include <dpn/read/markdown.hpp>
+#include <dpn/read/naft.hpp>
 
+#include <gubg/Strange.hpp>
 #include <gubg/mss.hpp>
 
 namespace dpn { 
@@ -24,30 +26,67 @@ namespace dpn {
 
 	bool File::interpret()
 	{
-		MSS_BEGIN(bool);
+		MSS_BEGIN(bool, "");
 
-		auto interpret = [&](auto &n){
+		bool ok = true;
+		auto interpret = [&](auto &n, auto &path){
 			std::string text;
 			for (gubg::Strange strange{n.text}; !strange.empty(); )
 			{
-				if (strange.pop_if('&'))
+				std::optional<meta::State> state;
+				AGG(ok, meta::parse(state, strange), return);
+				if (state)
 				{
-					gubg::Strange command;
-					strange.pop_until(command, ' ') || strange.pop_all(command);
-					auto &cmd = n.commands.emplace_back();
-					if (command.pop_until(cmd.first, ':'))
-						command.pop_all(cmd.second);
-					else
-						command.pop_all(cmd.first);
+					n.metas.push_back(*state);
+					continue;
 				}
-				else
+
+				std::optional<meta::Cost> cost;
+				AGG(ok, meta::parse(cost, strange), return);
+				if (cost)
 				{
-					strange.pop_all(text);
+					n.metas.push_back(*cost);
+					continue;
 				}
+
+				std::optional<meta::Duedate> duedate;
+				AGG(ok, meta::parse(duedate, strange), return);
+				if (duedate)
+				{
+					n.metas.push_back(*duedate);
+					continue;
+				}
+
+				std::optional<meta::Prio> prio;
+				AGG(ok, meta::parse(prio, strange), return);
+				if (prio)
+				{
+					n.metas.push_back(*prio);
+					continue;
+				}
+
+				std::optional<meta::Command> command;
+				AGG(ok, meta::parse(command, strange), return);
+				if (command)
+				{
+					n.metas.push_back(*command);
+					continue;
+				}
+
+				std::optional<meta::Data> data;
+				AGG(ok, meta::parse(data, strange), return);
+				if (data)
+				{
+					n.metas.push_back(*data);
+					continue;
+				}
+
+				strange.pop_all(text);
 			}
 			n.text = text;
 		};
 		each_node(interpret);
+		MSS(ok);
 
 		MSS_END();
 	}

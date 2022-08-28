@@ -62,26 +62,29 @@ namespace dpn {
 				MSS(file.interpret());
 
 				std::vector<std::string> failures;
-				file.each_node([&](const auto &n){
-					for (const auto &cmd: n.commands)
+				file.each_node([&](const auto &n, const auto &path){
+					for (const auto &meta: n.metas)
 					{
-						if (cmd.first == "include")
+						if (auto *command = std::get_if<meta::Command>(&meta))
 						{
-							const auto &include = cmd.second;
-							std::filesystem::path incl_fp;
-							if (!resolve_include_(incl_fp, include, fp))
+							if (command->type == meta::Command::Include)
 							{
-								failures.push_back(include);
-								continue;
-							}
-							if (fp__file_.count(incl_fp))
-							{
-								continue;
-							}
-							if (!add_file(incl_fp))
-							{
-								failures.push_back(include);
-								continue;
+								const auto &include = command->argument;
+								std::filesystem::path incl_fp;
+								if (!resolve_include_(incl_fp, include, fp))
+								{
+									failures.push_back(include);
+									continue;
+								}
+								if (fp__file_.count(incl_fp))
+								{
+									continue;
+								}
+								if (!add_file(incl_fp))
+								{
+									failures.push_back(include);
+									continue;
+								}
 							}
 						}
 					}
@@ -90,6 +93,93 @@ namespace dpn {
 
 				done.insert(fp);
 			}
+		}
+
+		MSS_END();
+	}
+
+	void Library::print(std::ostream &os) const
+	{
+		for (const auto &[fp,file]: fp__file_)
+		{
+			os << std::endl;
+			os << "File " << fp << std::endl;
+			auto print_node = [&](const auto &n, const auto &path){
+				os << std::string(path.size(), ' ');
+				for (const auto &meta: n.metas)
+				{
+					if (auto *state = std::get_if<meta::State>(&meta))
+						os << "[State](" << *state << ")";
+					else if (auto *cost = std::get_if<meta::Cost>(&meta))
+						os << *cost;
+					else if (auto *duedate = std::get_if<meta::Duedate>(&meta))
+						os << *duedate;
+					else if (auto *prio = std::get_if<meta::Prio>(&meta))
+						os << *prio;
+					else if (auto *command = std::get_if<meta::Command>(&meta))
+						os << *command;
+					else if (auto *data = std::get_if<meta::Data>(&meta))
+						os << *data;
+				}
+				os << "[Text](" << n.text << ")" << std::endl;
+			};
+			file.each_node(print_node);
+		}
+	}
+
+	bool Library::get(List &list, meta::State wanted_state) const
+	{
+		MSS_BEGIN(bool);
+
+		list.clear();
+
+		for (const auto &[fp,file]: fp__file_)
+		{
+			auto append = [&](const auto &n, const auto &path){
+				if (auto *state = n.template get<meta::State>(); !!state && *state == wanted_state)
+				{
+					List::Item item;
+					item.text = n.text;
+					item.fp = fp;
+					// item.state = *state;
+					if (auto *ptr = n.template get<meta::Prio>())
+						item.prio = ptr->value();
+					if (auto *ptr = n.template get<meta::Cost>())
+						item.cost = ptr->value;
+					list.items.emplace_back(item);
+				}
+			};
+			file.each_node(append);
+		}
+
+		MSS_END();
+	}
+
+	bool Library::get_due(List &list) const
+	{
+		MSS_BEGIN(bool);
+
+		list.clear();
+
+		for (const auto &[fp,file]: fp__file_)
+		{
+			auto append = [&](const auto &n, const auto &path){
+				if (auto *duedate = n.template get<meta::Duedate>())
+				{
+					List::Item item;
+					item.text = n.text;
+					item.fp = fp;
+					item.yyyymmdd = duedate->yyyymmdd();
+					if (auto *ptr = n.template get<meta::State>())
+						item.state = *ptr;
+					if (auto *ptr = n.template get<meta::Prio>())
+						item.prio = ptr->value();
+					if (auto *ptr = n.template get<meta::Cost>())
+						item.cost = ptr->value;
+					list.items.emplace_back(item);
+				}
+			};
+			file.each_node(append);
 		}
 
 		MSS_END();

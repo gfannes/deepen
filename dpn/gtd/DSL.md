@@ -7,6 +7,7 @@ The idea is to indicate DPN metadata at the start of a heading, paragraph, bulle
 * `.?`: New Node, considered unknown and should be explored.
 * `.>`: Delegated to somebody else. This Node is now on the _waiting for_ list.
 * `.@`: Node is actionable. This Node is now on the _actionables_ list.
+* `.!`: Work in progress
 * `..`: Locally done: for composite Nodes, this means all the work at this level is done, but sublevels might still require work.
 * `.~`: Cancelled. Same as actually deleting it, but still present in the file.
 

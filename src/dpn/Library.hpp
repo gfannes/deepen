@@ -2,10 +2,12 @@
 #define HEADER_dpn_Library_hpp_ALREADY_INCLUDED
 
 #include <dpn/File.hpp>
+#include <dpn/List.hpp>
 
 #include <gubg/std/filesystem.hpp>
 
 #include <map>
+#include <ostream>
 
 namespace dpn { 
 
@@ -14,9 +16,14 @@ namespace dpn {
 	public:
 		void clear();
 
-		bool add_file(const std::filesystem::path &fp);
+		bool add_file(const std::filesystem::path &);
 
 		bool resolve();
+
+		void print(std::ostream &) const;
+
+		bool get(List &, meta::State) const;
+		bool get_due(List &) const;
 
 	private:
 		bool resolve_include_(std::filesystem::path &fp, const std::string &incl, const std::filesystem::path &context_fp) const;

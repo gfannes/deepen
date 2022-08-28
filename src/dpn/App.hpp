@@ -19,6 +19,10 @@ namespace dpn {
 
     private:
         bool list_();
+        bool print_();
+        bool show_list_(meta::State);
+        bool show_list_due_();
+        void show_items_(const List &) const;
         bool update_(bool with_aggregates);
         bool export_();
         bool run_command_();
