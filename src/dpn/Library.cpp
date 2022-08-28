@@ -133,8 +133,11 @@ namespace dpn {
 
 		list.clear();
 
-		for (const auto &[fp,file]: fp__file_)
+		for (const auto &p: fp__file_)
 		{
+			const auto &fp = p.first;
+			const auto &file = p.second;
+
 			auto append = [&](const auto &n, const auto &path){
 				if (auto *state = n.template get<meta::State>(); !!state && *state == wanted_state)
 				{
@@ -161,8 +164,11 @@ namespace dpn {
 
 		list.clear();
 
-		for (const auto &[fp,file]: fp__file_)
+		for (const auto &p: fp__file_)
 		{
+			const auto &fp = p.first;
+			const auto &file = p.second;
+
 			auto append = [&](const auto &n, const auto &path){
 				if (auto *duedate = n.template get<meta::Duedate>())
 				{
