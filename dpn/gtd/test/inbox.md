@@ -6,4 +6,4 @@
 
 .> Someone else can do this
 
-&include:item2.md
+&include(item2.md)

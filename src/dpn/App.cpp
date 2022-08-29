@@ -28,6 +28,11 @@ namespace dpn {
     {
         MSS_BEGIN(bool, "");
 
+        // Use default input_filepaths from config if none were specified
+        if (options_.input_filepaths.empty())
+            for (const auto &fp: config_.default_inputs)
+                options_.input_filepaths.push_back(fp);
+
         MSS(!!options_.verb_opt, log::error() << "No verb was specified" << std::endl);
         const auto verb = *options_.verb_opt;
 
@@ -202,11 +207,11 @@ namespace dpn {
         gubg::naft::Document doc{std::cout};
         unsigned int ok_count = 0;
         std::list<std::string> fails;
-        for (const auto &root: config_.fps)
+        for (const auto &root_path: config_.paths)
         {
             try
             {
-                std::filesystem::current_path(root);
+                std::filesystem::current_path(root_path);
                 auto run_node = doc.node("Run");
                 run_node.attr("pwd", std::filesystem::current_path().string());
                 {
@@ -233,13 +238,13 @@ namespace dpn {
                     if (rc == 0)
                         ++ok_count;
                     else
-                        fails.push_back(root);
+                        fails.push_back(root_path);
                 }
             }
             catch (...)
             {
-                log::error() << "Path `" << root << "` does not exist" << std::endl;
-                fails.push_back(root);
+                log::error() << "Path `" << root_path << "` does not exist" << std::endl;
+                fails.push_back(root_path);
             }
             doc.text("\n");
         }
@@ -273,7 +278,7 @@ namespace dpn {
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
 
-            MSS(library_.add_file(filepath_abs));
+            MSS(library_.add_file(filepath_abs), log::error() << "Could not add " << filepath_abs << " to library" << std::endl);
         }
 
         MSS(library_.resolve());

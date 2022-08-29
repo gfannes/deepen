@@ -18,7 +18,7 @@ namespace dpn {
 		MSS_BEGIN(bool, "");
 
 		std::string content;
-		MSS(gubg::file::read(content, fp));
+		MSS(gubg::file::read(content, fp), log::error() << "Could not read content from " << fp << std::endl);
 
 		MSS(!fp__file_.count(fp));
 		auto &file = fp__file_[fp];
@@ -59,7 +59,7 @@ namespace dpn {
 			{
 				auto &file = fp__file_[fp];
 
-				MSS(file.interpret());
+				MSS(file.interpret(), log::error() << "Could not interpret " << fp << std::endl);
 
 				std::vector<std::string> failures;
 				file.each_node([&](const auto &n, const auto &path){

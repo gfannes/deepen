@@ -1,6 +1,8 @@
 #ifndef HEADER_dpn_config_Config_hpp_ALREADY_INCLUDED
 #define HEADER_dpn_config_Config_hpp_ALREADY_INCLUDED
 
+#include <gubg/std/filesystem.hpp>
+
 #include <string>
 #include <vector>
 #include <map>
@@ -10,13 +12,15 @@ namespace dpn { namespace config {
     class Config
     {
     public:
-        std::vector<std::string> fps;
-        std::map<std::string, std::string> name__fp;
+        std::vector<std::string> paths;
+        std::map<std::string, std::string> name__path;
+        std::vector<std::string> default_inputs;
 
         // Reads the config from NAFT format:
         // Ontology:
         // root:
-        //   * fp: filepath, mandatory
+        //   * path: path to root, mandatory
+        //   * file: relative filepath to default input file, optional
         //   * name: name that can be used in links, optional
         // Eg,
         // [root](fp:/home/geertf/gubg)(name:gubg)

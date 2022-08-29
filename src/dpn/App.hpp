@@ -27,7 +27,7 @@ namespace dpn {
         bool export_();
         bool run_command_();
 
-        const Options &options_;
+        Options options_;
         config::Config config_;
 
         bool load_tags_(metadata::Ns__Values &) const;

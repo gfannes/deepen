@@ -1,4 +1,5 @@
 #include <dpn/meta/Command.hpp>
+#include <dpn/log.hpp>
 
 #include <gubg/mss.hpp>
 
@@ -8,21 +9,21 @@ namespace dpn { namespace meta {
 	{
 		MSS_BEGIN(bool);
 
+		const auto sp = strange;
+
 		if (strange.pop_if('&'))
 		{
 			command.emplace();
 
 			gubg::Strange substr;
-			strange.pop_until(substr, ' ') || strange.pop_all(substr);
-
-			if (substr.pop_if("include:"))
+			if (strange.pop_if("include") && strange.pop_bracket(substr, "()"))
 			{
 				command->type = Command::Include;
 				command->argument = substr.str();
 			}
 			else
 			{
-				MSS(false);
+				MSS(false, log::error() << "Could not parse Command from `" << sp.str() << "`" << std::endl);
 			}
 		}
 
