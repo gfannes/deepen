@@ -3,7 +3,7 @@
 
 #include <dpn/Attribute.hpp>
 #include <dpn/meta/State.hpp>
-#include <dpn/meta/Cost.hpp>
+#include <dpn/meta/Effort.hpp>
 #include <dpn/meta/Duedate.hpp>
 #include <dpn/meta/Prio.hpp>
 #include <dpn/meta/Command.hpp>
@@ -23,7 +23,7 @@ namespace dpn {
 		unsigned int depth = 0;
 		Attributes attributes;
 
-		using Meta = std::variant<meta::State, meta::Cost, meta::Duedate, meta::Prio, meta::Command, meta::Data>;
+		using Meta = std::variant<meta::State, meta::Effort, meta::Duedate, meta::Prio, meta::Command, meta::Data>;
 		std::vector<Meta> metas;
 
 		std::vector<Node> childs;

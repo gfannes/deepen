@@ -110,8 +110,8 @@ namespace dpn {
 				{
 					if (auto *state = std::get_if<meta::State>(&meta))
 						os << "[State](" << *state << ")";
-					else if (auto *cost = std::get_if<meta::Cost>(&meta))
-						os << *cost;
+					else if (auto *effort = std::get_if<meta::Effort>(&meta))
+						os << *effort;
 					else if (auto *duedate = std::get_if<meta::Duedate>(&meta))
 						os << *duedate;
 					else if (auto *prio = std::get_if<meta::Prio>(&meta))
@@ -147,8 +147,8 @@ namespace dpn {
 					// item.state = *state;
 					if (auto *ptr = n.template get<meta::Prio>())
 						item.prio = ptr->value();
-					if (auto *ptr = n.template get<meta::Cost>())
-						item.cost = ptr->value;
+					if (auto *ptr = n.template get<meta::Effort>())
+						item.effort = ptr->hours;
 					list.items.emplace_back(item);
 				}
 			};
@@ -180,8 +180,8 @@ namespace dpn {
 						item.state = *ptr;
 					if (auto *ptr = n.template get<meta::Prio>())
 						item.prio = ptr->value();
-					if (auto *ptr = n.template get<meta::Cost>())
-						item.cost = ptr->value;
+					if (auto *ptr = n.template get<meta::Effort>())
+						item.effort = ptr->hours;
 					list.items.emplace_back(item);
 				}
 			};

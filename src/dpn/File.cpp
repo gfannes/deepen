@@ -41,11 +41,11 @@ namespace dpn {
 					continue;
 				}
 
-				std::optional<meta::Cost> cost;
-				AGG(ok, meta::parse(cost, strange), return);
-				if (cost)
+				std::optional<meta::Effort> effort;
+				AGG(ok, meta::parse(effort, strange), return);
+				if (effort)
 				{
-					n.metas.push_back(*cost);
+					n.metas.push_back(*effort);
 					continue;
 				}
 

@@ -30,9 +30,11 @@ See RICE system: reach, impact, confidence, effort
 		* 9: 90%
 		* a/A/<nothing>: 100%
 
-# Cost
+# Effort
 
-* `$1.2`:
+* `$1.2`: 1.2 hours
+* .@ Support for wdh format
+** `$1w2d3h`: 3+2*8+1*5*8 hours
 
 # Command
 
