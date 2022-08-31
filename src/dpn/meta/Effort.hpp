@@ -13,7 +13,11 @@ namespace dpn { namespace meta {
 	class Effort
 	{
 	public:
-		double hours = 0.0;
+		unsigned int total_minutes = 0;
+
+		std::string str() const;
+
+		Effort &operator+=(const Effort &rhs);
 	};
 
 	bool parse(std::optional<Effort> &, gubg::Strange &);

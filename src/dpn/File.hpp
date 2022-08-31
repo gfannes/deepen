@@ -3,11 +3,16 @@
 
 #include <dpn/Node.hpp>
 
+#include <gubg/std/filesystem.hpp>
+
 #include <string>
 #include <vector>
+#include <set>
 #include <ostream>
 
 namespace dpn { 
+
+	enum class Direction {Push, Pull};
 
 	class File
 	{
@@ -16,50 +21,61 @@ namespace dpn {
 
 		Nodes nodes;
 
+		std::set<std::filesystem::path> includes;
+
+		meta::Effort local_effort;
+		meta::Effort total_effort;
+
 		bool parse(const std::string &str, Format);
 
 		bool interpret();
 
 		template <typename Ftor>
-		void each_node(Ftor &&ftor) const
+		void each_node(Ftor &&ftor, Direction direction) const
 		{
 			std::vector<const Node *> path;
-			return each_node_(nodes, path, ftor);
+			return each_node_(nodes, path, ftor, direction);
 		}
 		template <typename Ftor>
-		void each_node(Ftor &&ftor)
+		void each_node(Ftor &&ftor, Direction direction)
 		{
 			std::vector<Node *> path;
-			return each_node_(nodes, path, ftor);
+			return each_node_(nodes, path, ftor, direction);
 		}
 
 	private:
 		template <typename Ftor>
-		void each_node_(const Nodes &nodes, std::vector<const Node *> &path, Ftor &&ftor) const
+		void each_node_(const Nodes &nodes, std::vector<const Node *> &path, Ftor &&ftor, Direction direction) const
 		{
 			for (const auto &node: nodes)
 			{
-				ftor(node, path);
+				if (direction == Direction::Push)
+					ftor(node, path);
 				if (!node.childs.empty())
 				{
 					path.push_back(&node);
-					each_node_(node.childs, path, ftor);
+					each_node_(node.childs, path, ftor, direction);
 					path.pop_back();
 				}
+				if (direction == Direction::Pull)
+					ftor(node, path);
 			}
 		}
 		template <typename Ftor>
-		void each_node_(Nodes &nodes, std::vector<Node *> &path, Ftor &&ftor)
+		void each_node_(Nodes &nodes, std::vector<Node *> &path, Ftor &&ftor, Direction direction)
 		{
 			for (auto &node: nodes)
 			{
-				ftor(node, path);
+				if (direction == Direction::Push)
+					ftor(node, path);
 				if (!node.childs.empty())
 				{
 					path.push_back(&node);
-					each_node_(node.childs, path, ftor);
+					each_node_(node.childs, path, ftor, direction);
 					path.pop_back();
 				}
+				if (direction == Direction::Pull)
+					ftor(node, path);
 			}
 		}
 

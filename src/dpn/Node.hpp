@@ -10,8 +10,11 @@
 #include <dpn/meta/Data.hpp>
 #include <dpn/log.hpp>
 
+#include <gubg/std/filesystem.hpp>
+
 #include <string>
 #include <vector>
+#include <set>
 #include <variant>
 
 namespace dpn { 
@@ -27,6 +30,12 @@ namespace dpn {
 		std::vector<Meta> metas;
 
 		std::vector<Node> childs;
+
+		meta::Effort my_effort;
+		meta::Effort local_effort;
+		meta::Effort total_effort;
+
+		std::set<std::filesystem::path> includes;
 
 		template <typename Meta>
 		const Meta *get() const

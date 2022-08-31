@@ -46,6 +46,7 @@ namespace dpn {
 				if (effort)
 				{
 					n.metas.push_back(*effort);
+					n.my_effort = *effort;
 					continue;
 				}
 
@@ -84,9 +85,15 @@ namespace dpn {
 				strange.pop_all(text);
 			}
 			n.text = text;
+			n.local_effort = n.my_effort;
+			for (const auto &child: n.childs)
+				n.local_effort += child.local_effort;
 		};
-		each_node(interpret);
+		each_node(interpret, Direction::Pull);
 		MSS(ok);
+
+		for (const auto &n: nodes)
+			local_effort += n.local_effort;
 
 		MSS_END();
 	}

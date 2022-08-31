@@ -17,8 +17,8 @@ namespace dpn {
 			std::filesystem::path fp;
 			std::optional<meta::State> state;
 			double prio = 1.0;
-			double effort = 1.0;
-			double rice() const {return prio/effort;}
+			unsigned int total_minutes = 60;
+			double rice() const {return prio/(total_minutes/60.0);}
 			std::optional<unsigned long> yyyymmdd;
 		};
 

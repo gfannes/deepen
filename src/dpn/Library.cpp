@@ -62,7 +62,7 @@ namespace dpn {
 				MSS(file.interpret(), log::error() << "Could not interpret " << fp << std::endl);
 
 				std::vector<std::string> failures;
-				file.each_node([&](const auto &n, const auto &path){
+				file.each_node([&](auto &n, const auto &path){
 					for (const auto &meta: n.metas)
 					{
 						if (auto *command = std::get_if<meta::Command>(&meta))
@@ -76,6 +76,10 @@ namespace dpn {
 									failures.push_back(include);
 									continue;
 								}
+								n.includes.insert(incl_fp);
+								for (const auto &child: n.childs)
+									n.includes.insert(child.includes.begin(), child.includes.end());
+								file.includes.insert(incl_fp);
 								if (fp__file_.count(incl_fp))
 								{
 									continue;
@@ -88,11 +92,69 @@ namespace dpn {
 							}
 						}
 					}
-				});
+				}, Direction::Pull);
 				MSS(failures.empty());
 
 				done.insert(fp);
 			}
+		}
+
+		// Keep merging file.includes until things stabilize
+		for (bool dirty = true; dirty; )
+		{
+			dirty = false;
+			for (auto &[_,file]: fp__file_)
+			{
+				const auto orig_size = file.includes.size();
+
+				for (const auto &incl_fp: file.includes)
+				{
+					auto it = fp__file_.find(incl_fp);
+					MSS(it != fp__file_.end());
+					const auto &incl_file = it->second;
+					file.includes.insert(incl_file.includes.begin(), incl_file.includes.end());
+				}
+
+				const auto new_size = file.includes.size();
+
+				if (orig_size != new_size)
+					dirty = true;
+			}
+		}
+
+		// Update the Node.includes with the info for File
+		for (auto &[_,file]: fp__file_)
+		{
+			auto complete_includes = [&](auto &n, const auto &path){
+				const auto initial_includes = n.includes;
+				for (const auto &initial_include: initial_includes)
+				{
+					auto it = fp__file_.find(initial_include);
+					if (it != fp__file_.end())
+						n.includes.insert(it->second.includes.begin(), it->second.includes.end());
+				}
+			};
+			file.each_node(complete_includes, Direction::Pull);
+		}
+
+		for (auto &[_,file]: fp__file_)
+		{
+			for (const auto &incl_fp: file.includes)
+			{
+				auto it = fp__file_.find(incl_fp);
+				MSS(it != fp__file_.end());
+				file.total_effort += it->second.local_effort;
+			}
+			auto update_total_effort = [&](auto &n, const auto &path){
+				n.total_effort = n.local_effort;
+				for (const auto &incl_fp: n.includes)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+						n.total_effort += it->second.local_effort;
+				}
+			};
+			file.each_node(update_total_effort, Direction::Push);
 		}
 
 		MSS_END();
@@ -103,7 +165,7 @@ namespace dpn {
 		for (const auto &[fp,file]: fp__file_)
 		{
 			os << std::endl;
-			os << "File " << fp << std::endl;
+			os << "File " << fp << " " << file.local_effort << " " << file.total_effort << std::endl;
 			auto print_node = [&](const auto &n, const auto &path){
 				os << std::string(path.size(), ' ');
 				for (const auto &meta: n.metas)
@@ -121,9 +183,10 @@ namespace dpn {
 					else if (auto *data = std::get_if<meta::Data>(&meta))
 						os << *data;
 				}
+				os << n.my_effort << n.local_effort << n.total_effort;
 				os << "[Text](" << n.text << ")" << std::endl;
 			};
-			file.each_node(print_node);
+			file.each_node(print_node, Direction::Push);
 		}
 	}
 
@@ -148,11 +211,11 @@ namespace dpn {
 					if (auto *ptr = n.template get<meta::Prio>())
 						item.prio = ptr->value();
 					if (auto *ptr = n.template get<meta::Effort>())
-						item.effort = ptr->hours;
+						item.total_minutes = ptr->total_minutes;
 					list.items.emplace_back(item);
 				}
 			};
-			file.each_node(append);
+			file.each_node(append, Direction::Push);
 		}
 
 		MSS_END();
@@ -181,11 +244,11 @@ namespace dpn {
 					if (auto *ptr = n.template get<meta::Prio>())
 						item.prio = ptr->value();
 					if (auto *ptr = n.template get<meta::Effort>())
-						item.effort = ptr->hours;
+						item.total_minutes = ptr->total_minutes;
 					list.items.emplace_back(item);
 				}
 			};
-			file.each_node(append);
+			file.each_node(append, Direction::Push);
 		}
 
 		MSS_END();

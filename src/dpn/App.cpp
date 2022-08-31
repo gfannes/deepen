@@ -72,7 +72,7 @@ namespace dpn {
             std::cout << "  [" << item.text << "](fp:" << item.fp << ")";
             if (item.state)
                 std::cout << "(state:" << *item.state << ")";
-            std::cout << "(prio:" << item.prio << ")(effort:" << item.effort << ")(rice:" << item.rice() << ")";
+            std::cout << "(prio:" << item.prio << ")(effort:" << item.total_minutes << ")(rice:" << item.rice() << ")";
             if (item.yyyymmdd)
                 std::cout << "(due:" << *item.yyyymmdd << ")";
             std::cout << std::endl;
