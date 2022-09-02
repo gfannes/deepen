@@ -14,9 +14,9 @@ namespace dpn {
 
 		switch (format)
 		{
-			case Format::Markdown: MSS(read::markdown(nodes, str)); break;
-			case Format::Naft: MSS(read::naft(nodes, str)); break;
-			case Format::Freemind: MSS(read::freemind(nodes, str)); break;
+			case Format::Markdown: MSS(read::markdown(root.childs, str)); break;
+			case Format::Naft: MSS(read::naft(root.childs, str)); break;
+			case Format::Freemind: MSS(read::freemind(root.childs, str)); break;
 
 			default: MSS(false, log::error() << "Format " << format << " not supported" << std::endl); break;
 		}
@@ -26,12 +26,12 @@ namespace dpn {
 
 	bool File::interpret()
 	{
-		MSS_BEGIN(bool, "");
+		MSS_BEGIN(bool);
 
 		bool ok = true;
 		auto interpret = [&](auto &n, auto &path){
 			std::string text;
-			for (gubg::Strange strange{n.text}; !strange.empty(); )
+			for (gubg::Strange strange{n.text}; (strange.strip(' '), !strange.empty()); )
 			{
 				std::optional<meta::State> state;
 				AGG(ok, meta::parse(state, strange), return);
@@ -58,11 +58,12 @@ namespace dpn {
 					continue;
 				}
 
-				std::optional<meta::Prio> prio;
-				AGG(ok, meta::parse(prio, strange), return);
-				if (prio)
+				std::optional<meta::Urgency> urgency;
+				AGG(ok, meta::parse(urgency, strange), return);
+				if (urgency)
 				{
-					n.metas.push_back(*prio);
+					n.metas.push_back(*urgency);
+					n.my_urgency = *urgency;
 					continue;
 				}
 
@@ -74,26 +75,31 @@ namespace dpn {
 					continue;
 				}
 
-				std::optional<meta::Data> data;
-				AGG(ok, meta::parse(data, strange), return);
-				if (data)
+				std::optional<meta::Tag> tag;
+				AGG(ok, meta::parse(tag, strange), return);
+				if (tag)
 				{
-					n.metas.push_back(*data);
+					n.metas.push_back(*tag);
+					n.tags[tag->key] = tag->value;
 					continue;
 				}
 
 				strange.pop_all(text);
 			}
 			n.text = text;
+
+			if (auto state = n.template get<meta::State>())
+			{
+				if (state->status == meta::Status::Done)
+					n.my_effort.done = n.my_effort.total;
+			}
+
 			n.local_effort = n.my_effort;
 			for (const auto &child: n.childs)
 				n.local_effort += child.local_effort;
 		};
 		each_node(interpret, Direction::Pull);
 		MSS(ok);
-
-		for (const auto &n: nodes)
-			local_effort += n.local_effort;
 
 		MSS_END();
 	}

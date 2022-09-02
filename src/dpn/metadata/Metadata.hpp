@@ -66,7 +66,7 @@ namespace dpn { namespace metadata {
 
         void clear() {*this = Metadata{};}
 
-        void setup(const std::vector<Item> &items, const config::Config &config, const std::filesystem::path &cwd);
+        bool setup(const std::vector<Item> &items, const config::Config &config, const std::filesystem::path &cwd);
 
         void aggregate_from_parent(const Metadata *parent, const Ns__Values &ns__possible_values);
         void aggregate_from_child(const Metadata &child);

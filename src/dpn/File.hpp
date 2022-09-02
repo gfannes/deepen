@@ -19,12 +19,10 @@ namespace dpn {
 	public:
 		enum class Format {Markdown, Naft, Freemind};
 
-		Nodes nodes;
+		File() {}
+		File(const std::string &text) {}
 
-		std::set<std::filesystem::path> includes;
-
-		meta::Effort local_effort;
-		meta::Effort total_effort;
+		Node root;
 
 		bool parse(const std::string &str, Format);
 
@@ -33,50 +31,46 @@ namespace dpn {
 		template <typename Ftor>
 		void each_node(Ftor &&ftor, Direction direction) const
 		{
-			std::vector<const Node *> path;
-			return each_node_(nodes, path, ftor, direction);
+			Node::Path path;
+			return each_node_(root, path, ftor, direction);
 		}
 		template <typename Ftor>
 		void each_node(Ftor &&ftor, Direction direction)
 		{
-			std::vector<Node *> path;
-			return each_node_(nodes, path, ftor, direction);
+			Node::Path path;
+			return each_node_(root, path, ftor, direction);
 		}
 
 	private:
 		template <typename Ftor>
-		void each_node_(const Nodes &nodes, std::vector<const Node *> &path, Ftor &&ftor, Direction direction) const
+		void each_node_(const Node &node, Node::Path &path, Ftor &&ftor, Direction direction) const
 		{
-			for (const auto &node: nodes)
+			if (direction == Direction::Push)
+				ftor(node, path);
+			if (!node.childs.empty())
 			{
-				if (direction == Direction::Push)
-					ftor(node, path);
-				if (!node.childs.empty())
-				{
-					path.push_back(&node);
-					each_node_(node.childs, path, ftor, direction);
-					path.pop_back();
-				}
-				if (direction == Direction::Pull)
-					ftor(node, path);
+				path.push_back(&node);
+				for (const auto &child: node.childs)
+					each_node_(child, path, ftor, direction);
+				path.pop_back();
 			}
+			if (direction == Direction::Pull)
+				ftor(node, path);
 		}
 		template <typename Ftor>
-		void each_node_(Nodes &nodes, std::vector<Node *> &path, Ftor &&ftor, Direction direction)
+		void each_node_(Node &node, Node::Path &path, Ftor &&ftor, Direction direction)
 		{
-			for (auto &node: nodes)
+			if (direction == Direction::Push)
+				ftor(node, path);
+			if (!node.childs.empty())
 			{
-				if (direction == Direction::Push)
-					ftor(node, path);
-				if (!node.childs.empty())
-				{
-					path.push_back(&node);
-					each_node_(node.childs, path, ftor, direction);
-					path.pop_back();
-				}
-				if (direction == Direction::Pull)
-					ftor(node, path);
+				path.push_back(&node);
+				for (auto &child: node.childs)
+					each_node_(child, path, ftor, direction);
+				path.pop_back();
 			}
+			if (direction == Direction::Pull)
+				ftor(node, path);
 		}
 
 	};

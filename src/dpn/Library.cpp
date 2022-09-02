@@ -10,12 +10,12 @@
 namespace dpn { 
 	void Library::clear()
 	{
-		*this = Library{};
+		fp__file_.clear();
 	}
 
 	bool Library::add_file(const std::filesystem::path &fp)
 	{
-		MSS_BEGIN(bool, "");
+		MSS_BEGIN(bool);
 
 		std::string content;
 		MSS(gubg::file::read(content, fp), log::error() << "Could not read content from " << fp << std::endl);
@@ -39,7 +39,7 @@ namespace dpn {
 
 	bool Library::resolve()
 	{
-		MSS_BEGIN(bool, "");
+		MSS_BEGIN(bool);
 
 		std::set<std::filesystem::path> done;
 		auto get_todos = [&](auto &fps_todo){
@@ -54,7 +54,6 @@ namespace dpn {
 
 		for (std::vector<std::filesystem::path> fps_todo; get_todos(fps_todo); )
 		{
-			S("");
 			for (const auto &fp: fps_todo)
 			{
 				auto &file = fp__file_[fp];
@@ -77,9 +76,6 @@ namespace dpn {
 									continue;
 								}
 								n.includes.insert(incl_fp);
-								for (const auto &child: n.childs)
-									n.includes.insert(child.includes.begin(), child.includes.end());
-								file.includes.insert(incl_fp);
 								if (fp__file_.count(incl_fp))
 								{
 									continue;
@@ -92,6 +88,9 @@ namespace dpn {
 							}
 						}
 					}
+					// Merge the includes of all the childs into our own includes. This relies on Direction::Pull
+					for (const auto &child: n.childs)
+						n.includes.insert(child.includes.begin(), child.includes.end());
 				}, Direction::Pull);
 				MSS(failures.empty());
 
@@ -99,30 +98,30 @@ namespace dpn {
 			}
 		}
 
-		// Keep merging file.includes until things stabilize
+		// Keep merging file.root.includes until things stabilize
 		for (bool dirty = true; dirty; )
 		{
 			dirty = false;
 			for (auto &[_,file]: fp__file_)
 			{
-				const auto orig_size = file.includes.size();
+				const auto orig_size = file.root.includes.size();
 
-				for (const auto &incl_fp: file.includes)
+				for (const auto &incl_fp: file.root.includes)
 				{
 					auto it = fp__file_.find(incl_fp);
 					MSS(it != fp__file_.end());
 					const auto &incl_file = it->second;
-					file.includes.insert(incl_file.includes.begin(), incl_file.includes.end());
+					file.root.includes.insert(incl_file.root.includes.begin(), incl_file.root.includes.end());
 				}
 
-				const auto new_size = file.includes.size();
+				const auto new_size = file.root.includes.size();
 
 				if (orig_size != new_size)
 					dirty = true;
 			}
 		}
 
-		// Update the Node.includes with the info for File
+		// Update the Node.includes with the info for File.root
 		for (auto &[_,file]: fp__file_)
 		{
 			auto complete_includes = [&](auto &n, const auto &path){
@@ -131,41 +130,79 @@ namespace dpn {
 				{
 					auto it = fp__file_.find(initial_include);
 					if (it != fp__file_.end())
-						n.includes.insert(it->second.includes.begin(), it->second.includes.end());
+					{
+						const auto &file = it->second;
+						n.includes.insert(file.root.includes.begin(), file.root.includes.end());
+					}
 				}
 			};
 			file.each_node(complete_includes, Direction::Pull);
 		}
 
+		// Compute the total_effort as local_effort + local_effort of all includes
+		// The Direction does not matter
 		for (auto &[_,file]: fp__file_)
 		{
-			for (const auto &incl_fp: file.includes)
-			{
-				auto it = fp__file_.find(incl_fp);
-				MSS(it != fp__file_.end());
-				file.total_effort += it->second.local_effort;
-			}
-			auto update_total_effort = [&](auto &n, const auto &path){
-				n.total_effort = n.local_effort;
-				for (const auto &incl_fp: n.includes)
+			auto compute_total_effort = [&](auto &node, const auto &path){
+				node.total_effort = node.local_effort;
+				for (const auto &incl_fp: node.includes)
 				{
 					auto it = fp__file_.find(incl_fp);
 					if (it != fp__file_.end())
-						n.total_effort += it->second.local_effort;
+					{
+						const auto &file = it->second;
+						node.total_effort += file.root.local_effort;
+					}
 				}
 			};
-			file.each_node(update_total_effort, Direction::Push);
+			file.each_node(compute_total_effort, Direction::Push);
+		}
+
+		// Push all tags for each file and to the includes. Keep pushing until no new tags are set into a file.root
+		for (bool dirty = true; dirty; )
+		{
+			S("");
+			dirty = false;
+			for (auto &[_,file]: fp__file_)
+			{
+				auto push_tags = [&](auto &node, const auto &path){
+					if (path.empty())
+						return;
+					const auto &parent = *path.back();
+					L(node.path(path));
+					for (const auto &[key,value]: parent.tags)
+					{
+						const auto p = node.tags.emplace(key, value);
+						L(C(key)C(value)C(p.second));
+						if (p.second)
+						{
+							for (const auto &incl_fp: node.includes)
+							{
+								auto it = fp__file_.find(incl_fp);
+								if (it != fp__file_.end())
+								{
+									auto &file = it->second;
+									const auto p = file.root.tags.emplace(key, value);
+									if (p.second)
+										dirty = true;
+								}
+							}
+						}
+					}
+				};
+				file.each_node(push_tags, Direction::Push);
+			}
 		}
 
 		MSS_END();
 	}
 
-	void Library::print(std::ostream &os) const
+	void Library::print_debug(std::ostream &os) const
 	{
 		for (const auto &[fp,file]: fp__file_)
 		{
 			os << std::endl;
-			os << "File " << fp << " " << file.local_effort << " " << file.total_effort << std::endl;
+			os << "File " << fp << std::endl;
 			auto print_node = [&](const auto &n, const auto &path){
 				os << std::string(path.size(), ' ');
 				for (const auto &meta: n.metas)
@@ -173,24 +210,26 @@ namespace dpn {
 					if (auto *state = std::get_if<meta::State>(&meta))
 						os << "[State](" << *state << ")";
 					else if (auto *effort = std::get_if<meta::Effort>(&meta))
-						os << *effort;
+						os << "[Effort](" << *effort << ")";
 					else if (auto *duedate = std::get_if<meta::Duedate>(&meta))
 						os << *duedate;
-					else if (auto *prio = std::get_if<meta::Prio>(&meta))
-						os << *prio;
+					else if (auto *urgency = std::get_if<meta::Urgency>(&meta))
+						os << *urgency;
 					else if (auto *command = std::get_if<meta::Command>(&meta))
 						os << *command;
-					else if (auto *data = std::get_if<meta::Data>(&meta))
-						os << *data;
+					else if (auto *tag = std::get_if<meta::Tag>(&meta))
+						os << *tag;
 				}
-				os << n.my_effort << n.local_effort << n.total_effort;
+				os << " my:" << n.my_effort << " local:" << n.local_effort << " total:" << n.total_effort;
+				for (const auto &[key,value]: n.tags)
+					os << " " << key << ":" << value;
 				os << "[Text](" << n.text << ")" << std::endl;
 			};
 			file.each_node(print_node, Direction::Push);
 		}
 	}
 
-	bool Library::get(List &list, meta::State wanted_state) const
+	bool Library::get(List &list, meta::Status wanted_status) const
 	{
 		MSS_BEGIN(bool);
 
@@ -202,16 +241,16 @@ namespace dpn {
 			const auto &file = p.second;
 
 			auto append = [&](const auto &n, const auto &path){
-				if (auto *state = n.template get<meta::State>(); !!state && *state == wanted_state)
+				if (auto *state = n.template get<meta::State>(); !!state && state->status == wanted_status)
 				{
 					List::Item item;
 					item.text = n.text;
 					item.fp = fp;
 					// item.state = *state;
-					if (auto *ptr = n.template get<meta::Prio>())
-						item.prio = ptr->value();
+					if (auto *ptr = n.template get<meta::Urgency>())
+						item.urgency = ptr->value();
 					if (auto *ptr = n.template get<meta::Effort>())
-						item.total_minutes = ptr->total_minutes;
+						item.effort = *ptr;
 					list.items.emplace_back(item);
 				}
 			};
@@ -241,10 +280,10 @@ namespace dpn {
 					item.yyyymmdd = duedate->yyyymmdd();
 					if (auto *ptr = n.template get<meta::State>())
 						item.state = *ptr;
-					if (auto *ptr = n.template get<meta::Prio>())
-						item.prio = ptr->value();
+					if (auto *ptr = n.template get<meta::Urgency>())
+						item.urgency = ptr->value();
 					if (auto *ptr = n.template get<meta::Effort>())
-						item.total_minutes = ptr->total_minutes;
+						item.effort = *ptr;
 					list.items.emplace_back(item);
 				}
 			};
@@ -255,14 +294,44 @@ namespace dpn {
 	}
 
 	// Privates
-	bool Library::resolve_include_(std::filesystem::path &fp, const std::string &incl, const std::filesystem::path &context_fp) const
+	bool Library::resolve_include_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const
 	{
 		MSS_BEGIN(bool);
 
-		fp = incl;
+		using P = std::filesystem::path;
 
-		if (!fp.is_absolute())
-			fp = context_fp.parent_path() / incl;
+		MSS(config_.substitute_names(incl));
+
+		P base = incl;
+		if (!base.is_absolute())
+			base = context_fp.parent_path() / incl;
+
+		std::vector<P> candidates;
+		if (!base.extension().empty())
+		{
+			candidates.push_back(base);
+		}
+		else
+		{
+			candidates.push_back(P{base}.replace_extension(".md"));
+			candidates.push_back(P{base}.replace_extension(".naft"));
+			candidates.push_back(P{base}.replace_extension(".mm"));
+			candidates.push_back(P{base}.append("index").replace_extension(".md"));
+			candidates.push_back(P{base}.append("index").replace_extension(".naft"));
+			candidates.push_back(P{base}.append("index").replace_extension(".mm"));
+		}
+
+		std::optional<P> p;
+		for (const auto &c: candidates)
+		{
+			if (!std::filesystem::is_regular_file(c))
+				continue;
+			MSS(!p, log::error() << "Ambiguous include '" << incl << "': both '" << *p << "' and '" << c << "' match" << std::endl);
+			p = c;
+		}
+		MSS(!!p, log::error() << "Could not resolve include '" << incl << "'" << " from " << context_fp << std::endl);
+
+		p->swap(fp);
 
 		MSS_END();
 	}

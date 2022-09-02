@@ -14,7 +14,7 @@ namespace dpn { namespace meta {
 	class Command
 	{
 	public:
-		enum Type {Invalid, Include};
+		enum Type {Invalid, Include, Uses};
 
 		Type type = Invalid;
 		std::string argument;

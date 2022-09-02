@@ -6,11 +6,12 @@
 #include <gubg/Strange.hpp>
 
 #include <optional>
+#include <string>
 #include <ostream>
 
 namespace dpn { namespace meta { 
 
-	enum class State
+	enum class Status
 	{
 		Inbox,
 		Actionable,
@@ -20,9 +21,19 @@ namespace dpn { namespace meta {
 		Canceled,
 	};
 
-	bool parse(std::optional<State> &state, gubg::Strange &strange);
+	std::ostream &operator<<(std::ostream &, Status);
 
-	std::ostream &operator<<(std::ostream &os, State state);
+	class State
+	{
+	public:
+		Status status = Status::Inbox;
+
+		std::string text;
+	};
+
+	bool parse(std::optional<State> &, gubg::Strange &);
+
+	std::ostream &operator<<(std::ostream &, const State &);
 
 	template <>
 	struct Traits<State>

@@ -5,12 +5,12 @@
 
 namespace dpn { namespace meta { 
 
-	std::string Effort::str() const
+	std::string Effort::to_dsl(unsigned int count)
 	{
-		auto minutes = total_minutes;
+		auto quarters = count;
 
-		auto hours = minutes/60;
-		minutes = minutes%60;
+		auto hours = quarters/4;
+		quarters = quarters%4;
 
 		auto days = hours/8;
 		hours = hours%8;
@@ -18,25 +18,72 @@ namespace dpn { namespace meta {
 		auto weeks = days/5;
 		days = days%5;
 
+		auto months = weeks/4;
+		weeks = weeks%4;
+
 		std::string s;
+		if (months > 0)
+			s += std::to_string(months) + "m";
 		if (weeks > 0)
 			s += std::to_string(weeks) + "w";
 		if (days > 0)
 			s += std::to_string(days) + "d";
 		if (hours > 0)
 			s += std::to_string(hours) + "h";
-		if (minutes > 0)
-			s += std::to_string(minutes) + "m";
+		if (quarters > 0)
+			s += std::to_string(quarters) + "q";
 
 		if (s.empty())
-			s = "0m";
+			s = "0h";
 
+		return s;
+	}
+
+	bool Effort::from_dsl(unsigned int &count, gubg::Strange &strange)
+	{
+		MSS_BEGIN(bool);
+
+		auto sp = strange;
+
+		unsigned int months = 0, weeks = 0, days = 0, hours = 0, quarters = 0;
+		{
+			gubg::Strange tmp;
+			if (strange.pop_until(tmp, 'm'))
+				tmp.pop_decimal(months);
+			if (strange.pop_until(tmp, 'w'))
+				tmp.pop_decimal(weeks);
+			if (strange.pop_until(tmp, 'd'))
+				tmp.pop_decimal(days);
+			if (strange.pop_until(tmp, 'h'))
+				tmp.pop_decimal(hours);
+			if (strange.pop_until(tmp, 'q'))
+				tmp.pop_decimal(quarters);
+		}
+		MSS(strange.empty(), log::error() << "Could not parse effort from '" << sp.str() << "'" << std::endl);
+
+		weeks += months*4;
+		days += weeks*5;
+		hours += days*8;
+		quarters += hours*4;
+
+		count = quarters;
+
+		MSS_END();
+	}
+
+	std::string Effort::str() const
+	{
+		std::string s;
+		s = to_dsl(todo())+"/"+to_dsl(total);
+		if (total > 0)
+			s += "/" + std::to_string((100*done)/total) + "%";
 		return s;
 	}
 
 	Effort &Effort::operator+=(const Effort &rhs)
 	{
-		total_minutes += rhs.total_minutes;
+		total += rhs.total;
+		done += rhs.done;
 		return *this;
 	}
 
@@ -48,28 +95,9 @@ namespace dpn { namespace meta {
 		{
 			gubg::Strange substr;
 			MSS(strange.pop_until(substr, ' ') || strange.pop_all(substr));
-			auto sp = substr;
+
 			effort.emplace();
-
-			unsigned int weeks = 0, days = 0, hours = 0, minutes = 0;
-			{
-				gubg::Strange tmp;
-				if (substr.pop_until(tmp, 'w'))
-					tmp.pop_decimal(weeks);
-				if (substr.pop_until(tmp, 'd'))
-					tmp.pop_decimal(days);
-				if (substr.pop_until(tmp, 'h'))
-					tmp.pop_decimal(hours);
-				if (substr.pop_until(tmp, 'm'))
-					tmp.pop_decimal(minutes);
-			}
-			MSS(substr.empty(), log::error() << "Could not parse effort from '" << sp.str() << "'" << std::endl);
-
-			days += weeks*5;
-			hours += days*8;
-			minutes += hours*60;
-
-			effort->total_minutes = minutes;
+			MSS(Effort::from_dsl(effort->total, substr));
 		}
 
 		MSS_END();
@@ -77,7 +105,7 @@ namespace dpn { namespace meta {
 
 	std::ostream &operator<<(std::ostream &os, const Effort &effort)
 	{
-		os << "[Effort](" << effort.str() << ")";
+		os << effort.str();
 		return os;
 	}
 

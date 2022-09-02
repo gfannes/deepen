@@ -130,7 +130,7 @@ namespace dpn { namespace input {
             if (node_ptr)
             {
                 metadata::split(node_ptr->text, metadata_items, strange);
-                node_ptr->metadata.setup(metadata_items, config, filepath.parent_path());
+                MSS(node_ptr->metadata.setup(metadata_items, config, filepath.parent_path()), log::error() << "Could not setup" << filepath << " " << std::endl);
             }
         }
 

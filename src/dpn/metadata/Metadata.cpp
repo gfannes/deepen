@@ -2,8 +2,10 @@
 
 namespace dpn { namespace metadata { 
 
-    void Metadata::setup(const std::vector<Item> &items, const config::Config &config, const std::filesystem::path &cwd)
+    bool Metadata::setup(const std::vector<Item> &items, const config::Config &config, const std::filesystem::path &cwd)
     {
+        MSS_BEGIN(bool);
+
         clear();
 
         Duration effort;
@@ -16,7 +18,9 @@ namespace dpn { namespace metadata {
                 if (item.is_link)
                 {
                     link = item;
-                    std::filesystem::path filepath = config.substitute_names(item.value);
+                    std::string str = item.value;
+                    MSS(config.substitute_names(str), log::error() << "Could not substitute in '" << cwd << "'" << std::endl);
+                    std::filesystem::path filepath = str;
                     input.linkpath_rel = filepath.string();
                     if (!filepath.is_absolute())
                         filepath = cwd / filepath;
@@ -41,6 +45,8 @@ namespace dpn { namespace metadata {
                 default: break;
             }
         }
+
+        MSS_END();
     }
 
     void Metadata::aggregate_from_parent(const Metadata *parent, const Ns__Values &ns__possible_values)

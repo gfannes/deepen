@@ -19,9 +19,11 @@ namespace dpn {
 
     private:
         bool list_();
-        bool print_();
-        bool show_list_(meta::State);
+        bool print_debug_();
+        bool show_list_(meta::Status);
         bool show_list_due_();
+        bool show_projects_();
+        bool show_todo_();
         void show_items_(const List &) const;
         bool update_(bool with_aggregates);
         bool export_();
@@ -33,7 +35,7 @@ namespace dpn {
         bool load_tags_(metadata::Ns__Values &) const;
 
         bool load_ontology_();
-        Library library_;
+        Library library_{config_};
         onto::AbsFilepath__Node abs_filepath__node_;
         onto::Node root_{onto::Type::Root};
     };

@@ -13,11 +13,17 @@ namespace dpn { namespace meta {
 	class Effort
 	{
 	public:
-		unsigned int total_minutes = 0;
+		unsigned int total = 0;
+		unsigned int done = 0;
+
+		unsigned int todo() const {return total-done;}
 
 		std::string str() const;
 
 		Effort &operator+=(const Effort &rhs);
+
+		static std::string to_dsl(unsigned int count);
+		static bool from_dsl(unsigned int &count, gubg::Strange &);
 	};
 
 	bool parse(std::optional<Effort> &, gubg::Strange &);

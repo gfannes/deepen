@@ -5,8 +5,8 @@ namespace dpn {
 
     enum class Verb
     {
-        Help, UpdateWithoutAggregates, UpdateWithAggregates, Export, List, Run, Print,
-        Inbox, Actionable, Forwarded, WIP, Duedate,
+        Help, UpdateWithoutAggregates, UpdateWithAggregates, Export, List, Run, PrintDebug,
+        Inbox, Actionable, Forwarded, WIP, Duedate, Projects, Todo,
     };
 
 }

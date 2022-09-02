@@ -59,21 +59,25 @@ namespace dpn { namespace config {
         MSS_END();
     }
 
-    std::string Config::substitute_names(const std::string &str) const
+    bool Config::substitute_names(std::string &str) const
     {
-        std::string res = str;
+        MSS_BEGIN(bool);
+
         for (const auto &[name, path]: name__path)
         {
             const std::string name_esc = std::string("${")+name+"}";
             while (true)
             {
-                const auto ix = res.find(name_esc);
+                const auto ix = str.find(name_esc);
                 if (ix == std::string::npos)
                     break;
-                res.replace(ix, name_esc.size(), path);
+                str.replace(ix, name_esc.size(), path);
             }
         }
-        return res;
+
+        MSS(str.find("${") == std::string::npos, log::error() << "Could not substitute all names in '" << str << "'" << std::endl);
+
+        MSS_END();
     }
 
     bool get_default_config_filepath(std::string &filepath)

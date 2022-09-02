@@ -6,6 +6,7 @@
 #include <string>
 #include <optional>
 #include <list>
+#include <map>
 
 namespace dpn { 
 
@@ -23,7 +24,8 @@ namespace dpn {
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;
 
-        std::list<std::string> tags;
+        std::list<std::string> tags_;//Old
+        std::map<std::string, std::string> tags;//New
 
         std::optional<onto::Format> format;
 

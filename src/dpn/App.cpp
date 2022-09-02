@@ -6,6 +6,8 @@
 #include <gubg/std/filesystem.hpp>
 #include <gubg/mss.hpp>
 
+#include <termcolor/termcolor.hpp>
+
 #include <fstream>
 #include <list>
 
@@ -26,7 +28,7 @@ namespace dpn {
 
     bool App::run()
     {
-        MSS_BEGIN(bool, "");
+        MSS_BEGIN(bool);
 
         // Use default input_filepaths from config if none were specified
         if (options_.input_filepaths.empty())
@@ -49,13 +51,16 @@ namespace dpn {
 
             case Verb::Run:                     MSS(run_command_(), log::error() << "Could not run command" << std::endl); break;
 
-            case Verb::Print:                   MSS(print_(),       log::error() << "Could not print" << std::endl); break;
+            case Verb::PrintDebug:              MSS(print_debug_(), log::error() << "Could not print debug" << std::endl); break;
 
-            case Verb::Inbox:                   MSS(show_list_(meta::State::Inbox),       log::error() << "Could not work on Inbox items" << std::endl); break;
-            case Verb::Actionable:              MSS(show_list_(meta::State::Actionable),  log::error() << "Could not work on Actionable items" << std::endl); break;
-            case Verb::Forwarded:               MSS(show_list_(meta::State::Forwarded),   log::error() << "Could not work on Forwarded items" << std::endl); break;
-            case Verb::WIP:                     MSS(show_list_(meta::State::WIP),         log::error() << "Could not work on WIP items" << std::endl); break;
-            case Verb::Duedate:                 MSS(show_list_due_(),                     log::error() << "Could not work on items with Duedate" << std::endl); break;
+            case Verb::Inbox:                   MSS(show_list_(meta::Status::Inbox),       log::error() << "Could not work on Inbox items" << std::endl); break;
+            case Verb::Actionable:              MSS(show_list_(meta::Status::Actionable),  log::error() << "Could not work on Actionable items" << std::endl); break;
+            case Verb::Forwarded:               MSS(show_list_(meta::Status::Forwarded),   log::error() << "Could not work on Forwarded items" << std::endl); break;
+            case Verb::WIP:                     MSS(show_list_(meta::Status::WIP),         log::error() << "Could not work on WIP items" << std::endl); break;
+            case Verb::Duedate:                 MSS(show_list_due_(),                      log::error() << "Could not work on items with Duedate" << std::endl); break;
+
+            case Verb::Projects:                MSS(show_projects_(),                      log::error() << "Could not show Projects" << std::endl); break;
+            case Verb::Todo:                    MSS(show_todo_(),                          log::error() << "Could not show Todo" << std::endl); break;
 
             default:                            MSS(false,          log::error() << "Unknown verb " << (int)verb << std::endl); break;
         }
@@ -72,7 +77,7 @@ namespace dpn {
             std::cout << "  [" << item.text << "](fp:" << item.fp << ")";
             if (item.state)
                 std::cout << "(state:" << *item.state << ")";
-            std::cout << "(prio:" << item.prio << ")(effort:" << item.total_minutes << ")(rice:" << item.rice() << ")";
+            std::cout << "(urgency:" << item.urgency << ")(effort:" << item.effort << ")(rice:" << item.rice() << ")";
             if (item.yyyymmdd)
                 std::cout << "(due:" << *item.yyyymmdd << ")";
             std::cout << std::endl;
@@ -80,16 +85,16 @@ namespace dpn {
         std::cout << "}" << std::endl;
     }
 
-    bool App::show_list_(meta::State state)
+    bool App::show_list_(meta::Status status)
     {
         MSS_BEGIN(bool);
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        MSS(library_.get(list, state));
+        MSS(library_.get(list, status));
         list.sort_on_rice();
-        std::cout << "[" << state << "](size:" << list.items.size() << ")" << std::endl;
+        std::cout << "[" << status << "](size:" << list.items.size() << ")" << std::endl;
         show_items_(list);
 
         MSS_END();
@@ -110,13 +115,73 @@ namespace dpn {
         MSS_END();
     }
 
-    bool App::print_()
+    bool App::show_projects_()
     {
         MSS_BEGIN(bool);
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        library_.print(std::cout);
+        Node::Path prev_path;
+
+        std::cout << termcolor::colorize;
+        meta::Effort total_effort;
+        auto print = [&](const auto &node, const auto &path){
+            if (node.has_matching_tags(options_.tags))
+            {
+                total_effort += node.my_effort;
+                if (node.my_urgency)
+                {
+                    if (prev_path != path)
+                    {
+                        std::cout << termcolor::yellow << to_string(path) << termcolor::reset;
+                        if (!path.empty())
+                            std::cout << ' ' << termcolor::blue << path.back()->total_effort << termcolor::reset;
+                        std::cout << std::endl;
+                        prev_path = path;
+                    }
+                    std::cout << '\t' << termcolor::green << node.text << ' ' << termcolor::blue << node.total_effort << termcolor::reset << std::endl;
+                }
+            }
+        };
+        library_.each_file([&](const auto &file){file.each_node(print, Direction::Push);});
+        std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
+        
+        MSS_END();
+    }
+
+    bool App::show_todo_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        Node::Path prev_path;
+
+        std::cout << termcolor::colorize;
+        meta::Effort total_effort;
+        auto print = [&](const auto &node, const auto &path){
+            if (node.has_matching_tags(options_.tags))
+            {
+                if (node.my_effort.todo() > 0)
+                {
+                    total_effort += node.my_effort;
+                    std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.total_effort << termcolor::reset << std::endl;
+                }
+            }
+        };
+        library_.each_file([&](const auto &file){file.each_node(print, Direction::Push);});
+        std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
+        
+        MSS_END();
+    }
+
+    bool App::print_debug_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        library_.print_debug(std::cout);
 
         MSS_END();
     }
@@ -132,9 +197,9 @@ namespace dpn {
         stream_config.detailed = options_.detailed;
         stream_config.mode = onto::Node::StreamConfig::List;
         stream_config.abs_filepath__node = &abs_filepath__node_;
-        if (!options_.tags.empty())
+        if (!options_.tags_.empty())
         {
-            std::string tmp = "@"; tmp += options_.tags.front();
+            std::string tmp = "@"; tmp += options_.tags_.front();
             gubg::Strange strange{tmp};
             stream_config.filter.emplace();
             MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
@@ -168,9 +233,9 @@ namespace dpn {
         stream_config.detailed = options_.detailed;
         stream_config.mode = onto::Node::StreamConfig::Export;
         stream_config.abs_filepath__node = &abs_filepath__node_;
-        if (!options_.tags.empty())
+        if (!options_.tags_.empty())
         {
-            std::string tmp = "@"; tmp += options_.tags.front();
+            std::string tmp = "@"; tmp += options_.tags_.front();
             gubg::Strange strange{tmp};
             stream_config.filter.emplace();
             MSS(stream_config.filter->parse(strange), log::error() << "Tag has incorrect format" << std::endl);
@@ -270,10 +335,11 @@ namespace dpn {
 
         using AbsFilepaths = std::set<std::filesystem::path>;
         AbsFilepaths abs_filepaths;
-        for (const auto &filepath: options_.input_filepaths)
+        for (std::string filepath: options_.input_filepaths)
         {
             auto &link = root_.childs.emplace_back(onto::Type::Link);
-            link.metadata.input.linkpath_rel = config_.substitute_names(filepath);
+            MSS(config_.substitute_names(filepath));
+            link.metadata.input.linkpath_rel = filepath;
             const auto filepath_abs = std::filesystem::absolute(filepath);
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
@@ -345,7 +411,7 @@ namespace dpn {
             ns__values.clear();
 
             metadata::Item item;
-            for (const auto &tag: options_.tags)
+            for (const auto &tag: options_.tags_)
             {
                 std::string tmp = "@"; tmp += tag;
                 gubg::Strange strange{tmp};

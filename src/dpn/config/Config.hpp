@@ -27,7 +27,7 @@ namespace dpn { namespace config {
         // [root](fp:/home/geertf/decode-it/deepen)(name:dpn)
         bool load_from_file(const std::string &filepath);
 
-        std::string substitute_names(const std::string &str) const;
+        bool substitute_names(std::string &str) const;
 
     private:
     };

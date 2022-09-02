@@ -39,12 +39,14 @@ namespace dpn {
                     else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                     else if (is("e", "export")) {verb_opt = Verb::Export;}
                     else if (is("r", "run"))    {verb_opt = Verb::Run;}
-                    else if (is("p", "print"))  {verb_opt = Verb::Print;}
+                    else if (is("D", "debug"))  {verb_opt = Verb::PrintDebug;}
                     else if (is("i", "inbox"))  {verb_opt = Verb::Inbox;}
                     else if (is("a", "action")) {verb_opt = Verb::Actionable;}
                     else if (is("f", "forward")){verb_opt = Verb::Forwarded;}
                     else if (is("w", "wip"))    {verb_opt = Verb::WIP;}
                     else if (is("d", "due"))    {verb_opt = Verb::Duedate;}
+                    else if (is("p", "project")){verb_opt = Verb::Projects;}
+                    else if (is("t", "todo"))   {verb_opt = Verb::Todo;}
                     state = State::Options;
                     break;
 
@@ -55,7 +57,16 @@ namespace dpn {
                     else if (is("-V", "--verbose"))         {MSS(argr.pop(verbosity_level),           log::error() << "Expected a valid verbosity level" << std::endl);}
                     else if (is("-i", "--input"))           {MSS(argr.pop(tmp),                       log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp);}
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
-                    else if (is("-t", "--tag"))             {MSS(argr.pop(tmp),                       log::error() << "Expected a tag" << std::endl); tags.push_back(tmp);}
+                    else if (is("-t", "--tag"))
+                    {
+                        MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
+                        tags_.push_back(tmp);
+                        const auto ix = tmp.find(':');
+                        if (ix == std::string::npos)
+                            tags[tmp] = "";
+                        else
+                            tags[tmp.substr(0, ix)] = tmp.substr(ix+1);
+                    }
                     else if (is("-f", "--format"))
                     {
                         MSS(argr.pop(tmp),                                                            log::error() << "Expected a tag" << std::endl);
@@ -124,12 +135,14 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
-        option("p", "print", "", "Print loaded library");
+        option("D", "debug", "", "Print debug version of loaded library");
         option("i", "inbox", "", "Work on Inbox items");
         option("a", "action", "", "Work on Actionable items");
         option("f", "forward", "", "Work on Forwarded items");
         option("w", "wip", "", "Work on WIP items");
         option("d", "due", "", "Work on items with Duedate");
+        option("p", "project", "", "List Projects");
+        option("t", "todo", "", "List Todo");
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");

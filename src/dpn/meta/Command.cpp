@@ -21,6 +21,11 @@ namespace dpn { namespace meta {
 				command->type = Command::Include;
 				command->argument = substr.str();
 			}
+			else if (strange.pop_if("uses") && strange.pop_bracket(substr, "()"))
+			{
+				command->type = Command::Uses;
+				command->argument = substr.str();
+			}
 			else
 			{
 				MSS(false, log::error() << "Could not parse Command from `" << sp.str() << "`" << std::endl);

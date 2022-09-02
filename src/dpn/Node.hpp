@@ -5,9 +5,9 @@
 #include <dpn/meta/State.hpp>
 #include <dpn/meta/Effort.hpp>
 #include <dpn/meta/Duedate.hpp>
-#include <dpn/meta/Prio.hpp>
+#include <dpn/meta/Urgency.hpp>
 #include <dpn/meta/Command.hpp>
-#include <dpn/meta/Data.hpp>
+#include <dpn/meta/Tag.hpp>
 #include <dpn/log.hpp>
 
 #include <gubg/std/filesystem.hpp>
@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 #include <variant>
 
 namespace dpn { 
@@ -22,11 +23,17 @@ namespace dpn {
 	class Node
 	{
 	public:
+		using Path = std::vector<const Node *>;
+		using Tags = std::map<std::string, std::string>;
+
+		Node() {}
+		Node(const std::string &text): text(text) {}
+
 		std::string text;
 		unsigned int depth = 0;
 		Attributes attributes;
 
-		using Meta = std::variant<meta::State, meta::Effort, meta::Duedate, meta::Prio, meta::Command, meta::Data>;
+		using Meta = std::variant<meta::State, meta::Effort, meta::Duedate, meta::Urgency, meta::Command, meta::Tag>;
 		std::vector<Meta> metas;
 
 		std::vector<Node> childs;
@@ -35,7 +42,15 @@ namespace dpn {
 		meta::Effort local_effort;
 		meta::Effort total_effort;
 
+		std::optional<meta::Urgency> my_urgency;
+
 		std::set<std::filesystem::path> includes;
+
+		Tags tags;
+
+		std::string path(const Path &, char sep = '/') const;
+
+		bool has_matching_tags(const Tags &wanted_tags) const;
 
 		template <typename Meta>
 		const Meta *get() const
@@ -55,6 +70,8 @@ namespace dpn {
 	};
 
 	using Nodes = std::vector<Node>;
+
+	std::string to_string(const Node::Path &, char sep = '/');
 
 } 
 

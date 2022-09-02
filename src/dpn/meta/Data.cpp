@@ -1,10 +1,10 @@
-#include <dpn/meta/Data.hpp>
+#include <dpn/meta/Tag.hpp>
 
 #include <gubg/mss.hpp>
 
 namespace dpn { namespace meta { 
 
-	bool parse(std::optional<Data> &data, gubg::Strange &strange)
+	bool parse(std::optional<Tag> &data, gubg::Strange &strange)
 	{
 		MSS_BEGIN(bool);
 
@@ -22,9 +22,9 @@ namespace dpn { namespace meta {
 		MSS_END();
 	}
 
-	std::ostream &operator<<(std::ostream &os, const Data &data)
+	std::ostream &operator<<(std::ostream &os, const Tag &data)
 	{
-		os << "[Data](" << data.key << ")(" << data.value << ")";
+		os << "[Tag](" << data.key << ")(" << data.value << ")";
 		return os;
 	}
 } } 
