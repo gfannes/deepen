@@ -29,15 +29,16 @@ namespace dpn {
 		MSS_BEGIN(bool);
 
 		bool ok = true;
-		auto interpret = [&](auto &n, auto &path){
+		auto interpret = [&](auto &node, auto &path){
+			// Parse as many meta items as possible and insert into node.metas and some node.my_ fields
 			std::string text;
-			for (gubg::Strange strange{n.text}; (strange.strip(' '), !strange.empty()); )
+			for (gubg::Strange strange{node.text}; (strange.strip(' '), !strange.empty()); )
 			{
 				std::optional<meta::State> state;
 				AGG(ok, meta::parse(state, strange), return);
 				if (state)
 				{
-					n.metas.push_back(*state);
+					node.metas.push_back(*state);
 					continue;
 				}
 
@@ -45,8 +46,8 @@ namespace dpn {
 				AGG(ok, meta::parse(effort, strange), return);
 				if (effort)
 				{
-					n.metas.push_back(*effort);
-					n.my_effort = *effort;
+					node.metas.push_back(*effort);
+					node.my_effort = *effort;
 					continue;
 				}
 
@@ -54,7 +55,7 @@ namespace dpn {
 				AGG(ok, meta::parse(duedate, strange), return);
 				if (duedate)
 				{
-					n.metas.push_back(*duedate);
+					node.metas.push_back(*duedate);
 					continue;
 				}
 
@@ -62,8 +63,8 @@ namespace dpn {
 				AGG(ok, meta::parse(urgency, strange), return);
 				if (urgency)
 				{
-					n.metas.push_back(*urgency);
-					n.my_urgency = *urgency;
+					node.metas.push_back(*urgency);
+					node.my_urgency = *urgency;
 					continue;
 				}
 
@@ -71,7 +72,7 @@ namespace dpn {
 				AGG(ok, meta::parse(command, strange), return);
 				if (command)
 				{
-					n.metas.push_back(*command);
+					node.metas.push_back(*command);
 					continue;
 				}
 
@@ -79,26 +80,23 @@ namespace dpn {
 				AGG(ok, meta::parse(tag, strange), return);
 				if (tag)
 				{
-					n.metas.push_back(*tag);
-					n.tags[tag->key] = tag->value;
+					node.metas.push_back(*tag);
+					node.my_tags[tag->key] = tag->value;
+					node.total_tags[tag->key].insert(tag->value);
 					continue;
 				}
 
 				strange.pop_all(text);
 			}
-			n.text = text;
+			node.text = text;
 
-			if (auto state = n.template get<meta::State>())
+			if (auto state = node.template get<meta::State>())
 			{
 				if (state->status == meta::Status::Done)
-					n.my_effort.done = n.my_effort.total;
+					node.my_effort.done = node.my_effort.total;
 			}
-
-			n.local_effort = n.my_effort;
-			for (const auto &child: n.childs)
-				n.local_effort += child.local_effort;
 		};
-		each_node(interpret, Direction::Pull);
+		each_node(interpret, Direction::Push);
 		MSS(ok);
 
 		MSS_END();

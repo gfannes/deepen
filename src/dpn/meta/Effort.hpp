@@ -17,6 +17,7 @@ namespace dpn { namespace meta {
 		unsigned int done = 0;
 
 		unsigned int todo() const {return total-done;}
+		std::optional<unsigned int> completion() const;
 
 		std::string str() const;
 

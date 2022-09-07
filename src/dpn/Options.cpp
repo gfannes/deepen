@@ -1,8 +1,11 @@
 #include <dpn/Options.hpp>
 #include <dpn/log.hpp>
+
 #include <gubg/cli/Range.hpp>
 #include <gubg/mss.hpp>
+
 #include <termcolor/termcolor.hpp>
+
 #include <sstream>
 #include <iomanip>
 
@@ -39,14 +42,26 @@ namespace dpn {
                     else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                     else if (is("e", "export")) {verb_opt = Verb::Export;}
                     else if (is("r", "run"))    {verb_opt = Verb::Run;}
-                    else if (is("D", "debug"))  {verb_opt = Verb::PrintDebug;}
-                    else if (is("i", "inbox"))  {verb_opt = Verb::Inbox;}
-                    else if (is("a", "action")) {verb_opt = Verb::Actionable;}
-                    else if (is("f", "forward")){verb_opt = Verb::Forwarded;}
-                    else if (is("w", "wip"))    {verb_opt = Verb::WIP;}
-                    else if (is("d", "due"))    {verb_opt = Verb::Duedate;}
-                    else if (is("p", "project")){verb_opt = Verb::Projects;}
-                    else if (is("t", "todo"))   {verb_opt = Verb::Todo;}
+                    else if (is("s", "show"))
+                    {
+                        verb_opt = Verb::Show;
+                        MSS(argr.pop(tmp), log::error() << "You have to indicate what you want to show" << std::endl);
+                        auto set_show_if = [&](const std::string &str, auto show){
+                            if (str == tmp)
+                                show_opt = show;
+                            return !!show_opt;
+                        };
+                        MSS(set_show_if("inbox", Show::Inbox)
+                            || set_show_if("action", Show::Actionable)
+                            || set_show_if("forward", Show::Forwarded)
+                            || set_show_if("wip", Show::WIP)
+                            || set_show_if("due", Show::DueDate)
+                            || set_show_if("feature", Show::Features)
+                            || set_show_if("todo", Show::Todo)
+                            || set_show_if("kv", Show::KeyValues)
+                            || set_show_if("KV", Show::KeyValues_v)
+                            );
+                    }
                     state = State::Options;
                     break;
 
@@ -57,6 +72,20 @@ namespace dpn {
                     else if (is("-V", "--verbose"))         {MSS(argr.pop(verbosity_level),           log::error() << "Expected a valid verbosity level" << std::endl);}
                     else if (is("-i", "--input"))           {MSS(argr.pop(tmp),                       log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp);}
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
+                    else if (is("-k", "--color_output"))    {MSS(argr.pop(color_output),              log::error() << "Expected a boolean" << std::endl);}
+                    else if (is("-s", "--sort"))
+                    {
+                        MSS(argr.pop(tmp), log::error() << "Expected a string" << std::endl);
+                        auto set_sort_if = [&](const char *str, Sort s){
+                            if (tmp == str)
+                                sort = s;
+                            return !!sort;
+                        };
+                        MSS(set_sort_if("effort", Sort::Effort)
+                            || set_sort_if("rice", Sort::Rice)
+                            || set_sort_if("due", Sort::DueDate)
+                            , log::error() << "Unknown sort type '" << tmp << "'" << std::endl);
+                    }
                     else if (is("-t", "--tag"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
@@ -122,7 +151,7 @@ namespace dpn {
         auto option = [&](auto sh, auto lh, auto opt, auto expl){
             oss                      << std::setw(4)               << " ";
             oss << termcolor::yellow << std::setw(6)  << std::left << sh << termcolor::reset;
-            oss << termcolor::yellow << std::setw(12) << std::left << lh << termcolor::reset;
+            oss << termcolor::yellow << std::setw(16) << std::left << lh << termcolor::reset;
             oss << termcolor::blue   << std::setw(12) << std::left << opt << termcolor::reset;
             oss                      << std::setw(6)  << std::left << expl;
             oss << std::endl;
@@ -135,14 +164,7 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
-        option("D", "debug", "", "Print debug version of loaded library");
-        option("i", "inbox", "", "Work on Inbox items");
-        option("a", "action", "", "Work on Actionable items");
-        option("f", "forward", "", "Work on Forwarded items");
-        option("w", "wip", "", "Work on WIP items");
-        option("d", "due", "", "Work on items with Duedate");
-        option("p", "project", "", "List Projects");
-        option("t", "todo", "", "List Todo");
+        option("s", "show", "inbox|action|forward|wip|due|feature|todo|kv|KV", "Show list or items");
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");
@@ -150,7 +172,8 @@ namespace dpn {
         option("-V", "--verbose", "<NUMBER>", "Set verbosity level [default: 0]");
         option("-i", "--input", "<FILEPATH>", "Add input filepath");
         option("-o", "--output", "<FILEPATH>", "Set output filepath");
-        option("-t", "--tag", "<TAG>", "Add tag");
+        option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
+        option("-t", "--tag", "<STRING>:<STRING>", "Add key-value tag");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");
 

@@ -71,12 +71,20 @@ namespace dpn { namespace meta {
 		MSS_END();
 	}
 
+	std::optional<unsigned int> Effort::completion() const
+	{
+		std::optional<unsigned int> res;
+		if (total > 0)
+			res = (100*done)/total;
+		return res;
+	}
+
 	std::string Effort::str() const
 	{
 		std::string s;
 		s = to_dsl(todo())+"/"+to_dsl(total);
-		if (total > 0)
-			s += "/" + std::to_string((100*done)/total) + "%";
+		if (auto c = completion())
+			s += "/" + std::to_string(*c) + "%";
 		return s;
 	}
 

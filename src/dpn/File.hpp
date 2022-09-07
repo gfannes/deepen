@@ -2,6 +2,7 @@
 #define HEADER_dpn_File_hpp_ALREADY_INCLUDED
 
 #include <dpn/Node.hpp>
+#include <dpn/enums.hpp>
 
 #include <gubg/std/filesystem.hpp>
 
@@ -12,8 +13,6 @@
 
 namespace dpn { 
 
-	enum class Direction {Push, Pull};
-
 	class File
 	{
 	public:
@@ -21,6 +20,8 @@ namespace dpn {
 
 		File() {}
 		File(const std::string &text) {}
+
+		std::filesystem::path fp;
 
 		Node root;
 
@@ -31,19 +32,19 @@ namespace dpn {
 		template <typename Ftor>
 		void each_node(Ftor &&ftor, Direction direction) const
 		{
-			Node::Path path;
+			Path path;
 			return each_node_(root, path, ftor, direction);
 		}
 		template <typename Ftor>
 		void each_node(Ftor &&ftor, Direction direction)
 		{
-			Node::Path path;
+			Path path;
 			return each_node_(root, path, ftor, direction);
 		}
 
 	private:
 		template <typename Ftor>
-		void each_node_(const Node &node, Node::Path &path, Ftor &&ftor, Direction direction) const
+		void each_node_(const Node &node, Path &path, Ftor &&ftor, Direction direction) const
 		{
 			if (direction == Direction::Push)
 				ftor(node, path);
@@ -58,7 +59,7 @@ namespace dpn {
 				ftor(node, path);
 		}
 		template <typename Ftor>
-		void each_node_(Node &node, Node::Path &path, Ftor &&ftor, Direction direction)
+		void each_node_(Node &node, Path &path, Ftor &&ftor, Direction direction)
 		{
 			if (direction == Direction::Push)
 				ftor(node, path);

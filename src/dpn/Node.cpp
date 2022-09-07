@@ -24,16 +24,16 @@ namespace dpn {
 	{
 		for (const auto &[key,value]: wanted_tags)
 		{
-			const auto it = tags.find(key);
-			if (it == tags.end())
+			const auto it = total_tags.find(key);
+			if (it == total_tags.end())
 				return false;
-			if (it->second != value)
+			if (!it->second.count(value))
 				return false;
 		}
 		return true;
 	}
 
-	std::string to_string(const Node::Path &path, char sep)
+	std::string to_string(const Path &path, char sep)
 	{
 		std::string str;
 		gubg::OnlyOnce skip_sep;

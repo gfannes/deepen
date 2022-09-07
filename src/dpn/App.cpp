@@ -10,6 +10,8 @@
 
 #include <fstream>
 #include <list>
+#include <algorithm>
+#include <iomanip>
 
 namespace dpn { 
 
@@ -51,16 +53,22 @@ namespace dpn {
 
             case Verb::Run:                     MSS(run_command_(), log::error() << "Could not run command" << std::endl); break;
 
-            case Verb::PrintDebug:              MSS(print_debug_(), log::error() << "Could not print debug" << std::endl); break;
-
-            case Verb::Inbox:                   MSS(show_list_(meta::Status::Inbox),       log::error() << "Could not work on Inbox items" << std::endl); break;
-            case Verb::Actionable:              MSS(show_list_(meta::Status::Actionable),  log::error() << "Could not work on Actionable items" << std::endl); break;
-            case Verb::Forwarded:               MSS(show_list_(meta::Status::Forwarded),   log::error() << "Could not work on Forwarded items" << std::endl); break;
-            case Verb::WIP:                     MSS(show_list_(meta::Status::WIP),         log::error() << "Could not work on WIP items" << std::endl); break;
-            case Verb::Duedate:                 MSS(show_list_due_(),                      log::error() << "Could not work on items with Duedate" << std::endl); break;
-
-            case Verb::Projects:                MSS(show_projects_(),                      log::error() << "Could not show Projects" << std::endl); break;
-            case Verb::Todo:                    MSS(show_todo_(),                          log::error() << "Could not show Todo" << std::endl); break;
+            case Verb::Show:
+            MSS(!!options_.show_opt);
+            switch (*options_.show_opt)
+            {
+                case Show::Inbox:       MSS(show_list_(meta::Status::Inbox),      log::error() << "Could not work on Inbox items" << std::endl); break;
+                case Show::Actionable:  MSS(show_list_(meta::Status::Actionable), log::error() << "Could not work on Actionable items" << std::endl); break;
+                case Show::Forwarded:   MSS(show_list_(meta::Status::Forwarded),  log::error() << "Could not work on Forwarded items" << std::endl); break;
+                case Show::WIP:         MSS(show_list_(meta::Status::WIP),        log::error() << "Could not work on WIP items" << std::endl); break;
+                case Show::DueDate:     MSS(show_list_due_(),                     log::error() << "Could not work on items with Duedate" << std::endl); break;
+                case Show::Features:    MSS(show_features_(),                     log::error() << "Could not show Features" << std::endl); break;
+                case Show::Todo:        MSS(show_todo_(),                         log::error() << "Could not show Todo" << std::endl); break;
+                case Show::KeyValues:   MSS(show_key_values_(false),              log::error() << "Could not show KeyValues" << std::endl); break;
+                case Show::KeyValues_v: MSS(show_key_values_(true),               log::error() << "Could not show KeyValues_v" << std::endl); break;
+                case Show::Debug:       MSS(print_debug_(),                       log::error() << "Could not show Debug" << std::endl); break;
+            }
+            break;
 
             default:                            MSS(false,          log::error() << "Unknown verb " << (int)verb << std::endl); break;
         }
@@ -74,12 +82,12 @@ namespace dpn {
         std::cout << "{" << std::endl;
         for (auto item: list.items)
         {
-            std::cout << "  [" << item.text << "](fp:" << item.fp << ")";
-            if (item.state)
-                std::cout << "(state:" << *item.state << ")";
-            std::cout << "(urgency:" << item.urgency << ")(effort:" << item.effort << ")(rice:" << item.rice() << ")";
-            if (item.yyyymmdd)
-                std::cout << "(due:" << *item.yyyymmdd << ")";
+            std::cout << "  [" << item.text() << "](fp:" << item.fp << ")";
+            if (auto state = item.state())
+                std::cout << "(state:" << *state << ")";
+            std::cout << "(urgency:" << item.urgency_value() << ")(effort:" << item.my_effort() << ")(rice:" << item.rice() << ")";
+            if (auto ul = item.yyyymmdd(); ul > 0)
+                std::cout << "(due:" << ul << ")";
             std::cout << std::endl;
         }
         std::cout << "}" << std::endl;
@@ -115,36 +123,40 @@ namespace dpn {
         MSS_END();
     }
 
-    bool App::show_projects_()
+    bool App::show_features_()
     {
         MSS_BEGIN(bool);
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        Node::Path prev_path;
+        List list;
+        MSS(library_.get_projects(list));
+        list.sort(options_.sort);
 
-        std::cout << termcolor::colorize;
-        meta::Effort total_effort;
-        auto print = [&](const auto &node, const auto &path){
-            if (node.has_matching_tags(options_.tags))
-            {
-                total_effort += node.my_effort;
-                if (node.my_urgency)
-                {
-                    if (prev_path != path)
-                    {
-                        std::cout << termcolor::yellow << to_string(path) << termcolor::reset;
-                        if (!path.empty())
-                            std::cout << ' ' << termcolor::blue << path.back()->total_effort << termcolor::reset;
-                        std::cout << std::endl;
-                        prev_path = path;
-                    }
-                    std::cout << '\t' << termcolor::green << node.text << ' ' << termcolor::blue << node.total_effort << termcolor::reset << std::endl;
-                }
-            }
-        };
-        library_.each_file([&](const auto &file){file.each_node(print, Direction::Push);});
-        std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
+        std::size_t effort_size = list.effort.str().size(), path_size = 0, text_size = 0;
+        for (const auto &item: list.items)
+        {
+            effort_size = std::max(effort_size, item.all_effort().str().size());
+            path_size = std::max(path_size, to_string(item.path).size());
+            text_size = std::max(text_size, item.text().size());
+        }
+
+        if (options_.color_output)
+            std::cout << termcolor::colorize;
+        for (const auto &item: list.items)
+        {
+            std::cout        << termcolor::blue   << std::setw(effort_size) << std::left  << item.all_effort()    << termcolor::reset;
+            std::cout << ' ' << termcolor::green  << std::setw(text_size)   << std::right << item.text()          << termcolor::reset;
+            std::cout << ' ' << termcolor::yellow << std::setw(path_size)   << std::left  << to_string(item.path) << termcolor::reset;
+            std::cout << std::endl;
+        }
+        std::cout        << termcolor::magenta    << std::setw(effort_size) << std::left  << list.effort    << termcolor::reset;
+        std::cout << ' ' << termcolor::magenta    << std::setw(text_size)   << std::right << ""             << termcolor::reset;
+        std::cout << ' ' << termcolor::magenta    << std::setw(path_size)   << std::left  << "TOTAL"        << termcolor::reset;
+        std::cout << std::endl;
+
+        if (options_.output_filepath)
+            MSS(library_.export_mindmap("Features", list, *options_.output_filepath));
         
         MSS_END();
     }
@@ -155,21 +167,27 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        Node::Path prev_path;
+        Path prev_path;
 
         std::cout << termcolor::colorize;
+        std::set<const Node *> visited_nodes;
         meta::Effort total_effort;
         auto print = [&](const auto &node, const auto &path){
             if (node.has_matching_tags(options_.tags))
             {
-                if (node.my_effort.todo() > 0)
+                if (visited_nodes.count(&node) == 0)
                 {
-                    total_effort += node.my_effort;
-                    std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.total_effort << termcolor::reset << std::endl;
+                    visited_nodes.insert(&node);
+
+                    if (node.my_effort.todo() > 0)
+                    {
+                        total_effort += node.my_effort;
+                        std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.all_effort << termcolor::reset << std::endl;
+                    }
                 }
             }
         };
-        library_.each_file([&](const auto &file){file.each_node(print, Direction::Push);});
+        library_.each_node(print, Direction::Push);
         std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
         
         MSS_END();
@@ -186,6 +204,46 @@ namespace dpn {
         MSS_END();
     }
 
+    bool App::show_key_values_(bool verbose)
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        TagSets tag_sets;
+        using KV = std::pair<std::string, std::string>;
+        std::map<KV, std::set<std::filesystem::path>> kv__fps;
+        library_.each_file([&](const auto &file){
+            auto collect = [&](const auto &node, const auto &path){
+                if (node.has_matching_tags(options_.tags))
+                {
+                    for (const auto &kv: node.my_tags)
+                    {
+                        tag_sets[kv.first].insert(kv.second);
+                        kv__fps[kv].insert(file.fp);
+                    }
+                }
+            };
+            file.each_node(collect, Direction::Push);
+        });
+
+        std::cout << termcolor::colorize;
+        for (const auto &[key,values]: tag_sets)
+        {
+            std::cout << termcolor::yellow << key << termcolor::reset << std::endl;
+            for (const auto &value: values)
+            {
+                std::cout << '\t' << termcolor::green << value << termcolor::reset << std::endl;
+                if (verbose)
+                {
+                    for (const auto &fp: kv__fps[KV{key, value}])
+                        std::cout << "\t\t" << termcolor::blue << fp << termcolor::reset << std::endl;
+                }
+            }
+        }
+
+        MSS_END();
+    }
 
     bool App::list_()
     {
@@ -344,7 +402,7 @@ namespace dpn {
             link.metadata.input.linkpath_abs = filepath_abs;
             abs_filepaths.insert(filepath_abs);
 
-            MSS(library_.add_file(filepath_abs), log::error() << "Could not add " << filepath_abs << " to library" << std::endl);
+            MSS(library_.add_file(filepath_abs, true), log::error() << "Could not add " << filepath_abs << " to library" << std::endl);
         }
 
         MSS(library_.resolve());
@@ -377,7 +435,7 @@ namespace dpn {
                     node.aggregate_metadata(nullptr, ns__values);
             }
 
-        //Merge linkpaths until stable
+            //Merge linkpaths until stable
             while (true)
             {
                 unsigned int count = 0u;

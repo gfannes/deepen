@@ -21,9 +21,9 @@ namespace dpn { namespace meta {
 				command->type = Command::Include;
 				command->argument = substr.str();
 			}
-			else if (strange.pop_if("uses") && strange.pop_bracket(substr, "()"))
+			else if (strange.pop_if("require") && strange.pop_bracket(substr, "()"))
 			{
-				command->type = Command::Uses;
+				command->type = Command::Require;
 				command->argument = substr.str();
 			}
 			else

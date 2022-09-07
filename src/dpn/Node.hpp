@@ -20,12 +20,16 @@
 
 namespace dpn { 
 
+	class Node;
+
+	using Path = std::vector<const Node *>;
+
+	using Tags = std::map<std::string, std::string>;
+	using TagSets = std::map<std::string, std::set<std::string>>;
+	
 	class Node
 	{
 	public:
-		using Path = std::vector<const Node *>;
-		using Tags = std::map<std::string, std::string>;
-
 		Node() {}
 		Node(const std::string &text): text(text) {}
 
@@ -40,13 +44,16 @@ namespace dpn {
 
 		meta::Effort my_effort;
 		meta::Effort local_effort;
-		meta::Effort total_effort;
+		meta::Effort all_effort;
 
 		std::optional<meta::Urgency> my_urgency;
 
-		std::set<std::filesystem::path> includes;
+		std::set<std::filesystem::path> my_includes;
+		std::set<std::filesystem::path> my_requires;
+		std::set<std::filesystem::path> all_dependencies;
 
-		Tags tags;
+		Tags my_tags;
+		TagSets total_tags;
 
 		std::string path(const Path &, char sep = '/') const;
 
@@ -71,7 +78,7 @@ namespace dpn {
 
 	using Nodes = std::vector<Node>;
 
-	std::string to_string(const Node::Path &, char sep = '/');
+	std::string to_string(const Path &, char sep = '/');
 
 } 
 

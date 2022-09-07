@@ -39,13 +39,6 @@ namespace dpn { namespace read {
 				case Reader::Item::BulletClose:
 				nodes_stack.pop_back();
 				break;
-
-				case Reader::Item::Line:
-				{
-					auto &node = nodes_stack.back()->emplace_back();
-					node.text = item.text;
-				}
-				break;
 			}
 		}
 		MSS(!reader.error, log::error() << "Failed to read markdown: " << *reader.error);

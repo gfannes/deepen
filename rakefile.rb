@@ -18,6 +18,8 @@ def cooker(&block)
 
     cpp_version = {gcc: "17", msvc: :latest, clang: "17"}[toolchain]
     c.option("c++.std", cpp_version)
+    c.option("fail_on_warning", "return")
+    c.option("debug_symbols", "true")
 
     case GUBG.os()
     when :linux

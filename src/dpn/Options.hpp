@@ -20,11 +20,15 @@ namespace dpn {
 
         //Options
         int verbosity_level = 0;
+        bool color_output = true;
+        std::optional<Sort> sort;
 
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;
 
+        // .@ Remove tags_ and all its users
         std::list<std::string> tags_;//Old
+
         std::map<std::string, std::string> tags;//New
 
         std::optional<onto::Format> format;
@@ -33,6 +37,8 @@ namespace dpn {
 
         //Arguments
         std::list<std::string> arguments;
+
+        std::optional<Show> show_opt;
 
         bool parse(int argc, const char **argv);
         bool rearrange();
