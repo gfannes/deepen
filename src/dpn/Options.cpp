@@ -2,6 +2,7 @@
 #include <dpn/log.hpp>
 
 #include <gubg/cli/Range.hpp>
+#include <gubg/Strange.hpp>
 #include <gubg/mss.hpp>
 
 #include <termcolor/termcolor.hpp>
@@ -55,11 +56,14 @@ namespace dpn {
                             || set_show_if("action", Show::Actionable)
                             || set_show_if("forward", Show::Forwarded)
                             || set_show_if("wip", Show::WIP)
+                            || set_show_if("done", Show::Done)
                             || set_show_if("due", Show::DueDate)
                             || set_show_if("feature", Show::Features)
                             || set_show_if("todo", Show::Todo)
                             || set_show_if("kv", Show::KeyValues)
                             || set_show_if("KV", Show::KeyValues_v)
+                            || set_show_if("debug", Show::Debug)
+                            , log::error() << "Don't know how to show '" << tmp << "'" << std::endl
                             );
                     }
                     state = State::Options;
@@ -68,11 +72,12 @@ namespace dpn {
                     case State::Options:
                     if (false);
                     else if (is("-h", "--help"))            {verb_opt = Verb::Help;}
-                    else if (is("-d", "--detailed"))        {detailed = true;}
+                    else if (is("-D", "--detailed"))        {detailed_ = true;}
                     else if (is("-V", "--verbose"))         {MSS(argr.pop(verbosity_level),           log::error() << "Expected a valid verbosity level" << std::endl);}
                     else if (is("-i", "--input"))           {MSS(argr.pop(tmp),                       log::error() << "Expected an input filepath" << std::endl); input_filepaths.push_back(tmp);}
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
                     else if (is("-k", "--color_output"))    {MSS(argr.pop(color_output),              log::error() << "Expected a boolean" << std::endl);}
+                    else if (is("-r", "--reverse"))         {reverse = true;}
                     else if (is("-s", "--sort"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a string" << std::endl);
@@ -95,6 +100,16 @@ namespace dpn {
                             tags[tmp] = "";
                         else
                             tags[tmp.substr(0, ix)] = tmp.substr(ix+1);
+                    }
+                    else if (is("-d", "--details"))
+                    {
+                        MSS(argr.pop(tmp), log::error() << "Expected a list of uint" << std::endl);
+                        gubg::Strange strange{tmp};
+                        for (unsigned int ui; strange.pop_decimal(ui); )
+                        {
+                            details.insert(ui);
+                            MSS(strange.pop_if(',') || strange.empty(), log::error() << "The details list should be comma-separated" << std::endl);
+                        }
                     }
                     else if (is("-f", "--format"))
                     {
@@ -164,15 +179,16 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
-        option("s", "show", "inbox|action|forward|wip|due|feature|todo|kv|KV", "Show list or items");
+        option("s", "show", "inbox|action|forward|wip|done|due|feature|todo|kv|KV", "Show list or items");
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");
-        option("-d", "--detailed", "", "Provide detailed information");
+        option("-D", "--detailed", "", "Provide detailed information");
         option("-V", "--verbose", "<NUMBER>", "Set verbosity level [default: 0]");
         option("-i", "--input", "<FILEPATH>", "Add input filepath");
         option("-o", "--output", "<FILEPATH>", "Set output filepath");
         option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
+        option("-r", "--reverse", "", "Show items in reversed order [default: no]");
         option("-t", "--tag", "<STRING>:<STRING>", "Add key-value tag");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");

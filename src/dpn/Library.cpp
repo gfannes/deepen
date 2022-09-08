@@ -10,6 +10,23 @@
 #include <fstream>
 
 namespace dpn { 
+	bool Library::Filter::operator()(const Node &node) const
+	{
+		MSS_BEGIN(bool);
+
+		MSS_Q(!node.text.empty() || !node.childs.empty() || !node.all_dependencies.empty());
+
+		MSS_Q(node.has_matching_tags(tags));
+
+		if (status)
+		{
+			MSS_Q(!!node.agg_state);
+			MSS_Q(node.agg_state->status == *status);
+		}
+
+		MSS_END();
+	}
+
 	void Library::clear()
 	{
 		fp__file_.clear();
@@ -31,7 +48,7 @@ namespace dpn {
 		MSS(!fp__file_.count(fp));
 		auto &file = fp__file_[fp];
 		file.fp = fp;
-		file.root.text = "[root](fp:"+fp.string()+")";
+		file.root.text = "[file]("+fp.string()+")";
 
 		std::optional<File::Format> format;
 		{
@@ -210,39 +227,84 @@ namespace dpn {
 			}
 		}
 
-		// Compute local_effort for all files and nodes
+		// Aggregate the states from root to leaf
+		{
+			bool ok = true;
+			auto aggregate_state = [&](auto &node, const auto &path){
+				if (node.my_state)
+				{
+					if (!node.agg_state)
+						node.agg_state = node.my_state;
+					AGG(ok, node.agg_state == node.my_state, log::error() << "State conflict detected with node.my_state" << std::endl);
+				}
+				else
+				{
+					if (path.empty())
+						return;
+					const auto &parent = *path.back();
+					if (parent.agg_state)
+					{
+						if (!node.agg_state)
+							node.agg_state = parent.agg_state;
+						AGG(ok, node.agg_state == parent.agg_state, log::error() << "State conflict detected with parent.agg_state" << std::endl);
+					}
+				}
+			};
+			each_node(aggregate_state, Direction::Push);
+			MSS(ok);
+		}
+
+		// Set my_effort to done if the state is done
+		for (auto &[fp,file]: fp__file_)
+		{
+			auto set_my_effort_to_done = [&](auto &node, const auto &path){
+				if (node.agg_state && node.agg_state->status == meta::Status::Done)
+					node.my_effort.done = node.my_effort.total;
+			};
+			file.each_node(set_my_effort_to_done, Direction::Push);
+		}
+
+		compute_effort_([](Node &node) -> meta::Effort& {return node.total_effort;}, Filter{});
+
+		MSS_END();
+	}
+
+	void Library::compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &filter)
+	{
+		// Compute the aggregate effort restricted to a single file, for all files and nodes
 		for (auto &[fp,file]: fp__file_)
 		{
 			auto compute_local_effort = [&](auto &node, const auto &path){
-				if (node.has_matching_tags(options_.tags))
-					node.local_effort = node.my_effort;
+				node.tmp_effort_.clear();
+				if (filter(node))
+					node.tmp_effort_ = node.my_effort;
 				for (const auto &child: node.childs)
-					node.local_effort += child.local_effort;
+					node.tmp_effort_ += child.tmp_effort_;
 			};
 			// Direction::Pull is important to aggregate from leaf to root
 			file.each_node(compute_local_effort, Direction::Pull);
 		}
 
-		// Compute the all_effort as local_effort + local_effort of all all_dependencies
+		// Compute the agg_effort as tmp_effort_ + tmp_effort_ of all all_dependencies
+		// Note that agg_effort depends on the get_effort() getter
 		// The Direction does not matter
 		for (auto &[_,file]: fp__file_)
 		{
 			auto compute_total_effort = [&](auto &node, const auto &path){
-				node.all_effort = node.local_effort;
+				auto &agg_effort = get_effort(node);
+				agg_effort = node.tmp_effort_;
 				for (const auto &incl_fp: node.all_dependencies)
 				{
 					auto it = fp__file_.find(incl_fp);
 					if (it != fp__file_.end())
 					{
 						const auto &file = it->second;
-						node.all_effort += file.root.local_effort;
+						agg_effort += file.root.tmp_effort_;
 					}
 				}
 			};
 			file.each_node(compute_total_effort, Direction::Push);
 		}
-
-		MSS_END();
 	}
 
 	void Library::print_debug(std::ostream &os) const
@@ -268,99 +330,89 @@ namespace dpn {
 					else if (auto *tag = std::get_if<meta::Tag>(&meta))
 						os << *tag;
 				}
-				os << " my:" << node.my_effort << " local:" << node.local_effort << " all:" << node.all_effort;
+				os << " my:" << node.my_effort << " total:" << node.total_effort << " filtered:" << node.filtered_effort;
 				for (const auto &[key,value]: node.my_tags)
 					os << " " << key << ":" << value;
+				if (node.my_state)
+					os << " my: " << *node.my_state;
+				if (node.agg_state)
+					os << " agg: " << *node.agg_state;
 				os << "[Text](" << node.text << ")" << std::endl;
 			};
 			file.each_node(print_node, Direction::Push);
 		}
 	}
 
-	bool Library::get(List &list, meta::Status wanted_status) const
+	bool Library::get(List &list, const Filter &filter)
 	{
 		MSS_BEGIN(bool);
 
 		list.clear();
 
-		for (const auto &p: fp__file_)
-		{
-			const auto &fp = p.first;
-			const auto &file = p.second;
-
-			auto append = [&](const auto &node, const auto &path){
-				if (auto *state = node.template get<meta::State>(); !!state && state->status == wanted_status)
+		auto append = [&](const auto &node, const auto &path){
+			if (!filter(node))
+				return;
+			if (filter.status)
+			{
+				if (node.my_state && node.my_state->status == *filter.status)
 				{
 					auto &item = list.items.emplace_back(node);
-					item.fp = fp;
+					item.path = path;
 				}
-			};
-			file.each_node(append, Direction::Push);
-		}
+			}
+		};
+		each_node(append, Direction::Push);
+
+		compute_effort_(list, filter);
 
 		MSS_END();
 	}
 
-	bool Library::get_due(List &list) const
+	bool Library::get_due(List &list, const Filter &filter)
 	{
 		MSS_BEGIN(bool);
 
 		list.clear();
 
-		for (const auto &p: fp__file_)
-		{
-			const auto &fp = p.first;
-			const auto &file = p.second;
-
-			auto append = [&](const auto &node, const auto &path){
-				if (auto *duedate = node.template get<meta::Duedate>())
-				{
-					auto &item = list.items.emplace_back(node);
-					item.fp = fp;
-				}
-			};
-			file.each_node(append, Direction::Push);
-		}
-
-		MSS_END();
-	}
-
-	bool Library::get_projects(List &list) const
-	{
-		MSS_BEGIN(bool);
-
-		list.clear();
-
-        std::set<const Node *> aggregated_nodes;
-        auto lambda = [&](const auto &node, const auto &path){
-            if (node.has_matching_tags(options_.tags))
+		auto append = [&](const auto &node, const auto &path){
+			if (!filter(node))
+            	return;
+            if (auto *duedate = node.template get<meta::Duedate>())
             {
-                if (node.my_urgency)
-                {
-                	// We only count the effort for project nodes and their descendants
-                	auto aggregate_effort = [&](const auto &node, const auto &_){
-                		if (node.has_matching_tags(options_.tags))
-                		{
-                			if (aggregated_nodes.count(&node) == 0)
-                			{
-                				list.effort += node.my_effort;
-                				aggregated_nodes.insert(&node);
-                			}
-                		}
-                	};
-                	each_node(node, aggregate_effort, Direction::Push);
+            	auto &item = list.items.emplace_back(node);
+            	item.path = path;
+            }
+		};
+		each_node(append, Direction::Push);
 
-                	auto &item = list.items.emplace_back(node);
-                	item.path = path;
-                }
+		compute_effort_(list, filter);
+
+		MSS_END();
+	}
+
+	bool Library::get_features(List &list, const Filter &filter)
+	{
+		MSS_BEGIN(bool);
+
+		list.clear();
+
+        auto lambda = [&](const auto &node, const auto &path){
+        	if (!filter(node))
+        		return;
+            if (node.my_urgency)
+            {
+            	auto &item = list.items.emplace_back(node);
+            	item.path = path;
             }
         };
         each_node(lambda, Direction::Push);
 
+		compute_effort_(list, filter);
+
 		MSS_END();
 	}
 
-	bool Library::export_mindmap(const std::string &root_text, const List &list, const std::filesystem::path &output_fp) const
+	bool Library::export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);
 
@@ -399,7 +451,7 @@ namespace dpn {
 				std::list<gubg::xml::writer::Tag> tags;
 				auto &feature = tags.emplace_back(root.tag("node"));
 				feature.attr("TEXT", item.node().path(item.path));
-				add_effort(item.node().all_effort, feature);
+				add_effort(item.node().filtered_effort, feature);
 
 				Path prev_path;
 				auto prev_path_in = [&](const auto &node, const auto &path){
@@ -408,8 +460,9 @@ namespace dpn {
 					auto ptr = prev_path.back();
 					return ptr == &node || std::find(path.begin(), path.end(), ptr) != path.end();
 				};
+
 				auto lambda = [&](const auto &node, const auto &path){
-					if (node.text.empty() && node.childs.empty() && node.all_dependencies.empty())
+					if (!filter(node))
 						return;
 
 					while (!prev_path_in(node, path))
@@ -420,7 +473,7 @@ namespace dpn {
 
 					auto &n = tags.emplace_back(tags.back().tag("node"));
 					n.attr("TEXT", node.text);
-					add_effort(node.all_effort, n);
+					add_effort(node.filtered_effort, n);
 
 					prev_path = path;
 					prev_path.push_back(&node);
@@ -479,6 +532,31 @@ namespace dpn {
 		p->swap(fp);
 
 		MSS_END();
+	}
+
+	void Library::compute_effort_(List &list, const Filter &filter)
+	{
+		compute_effort_([](Node &node) -> meta::Effort& {return node.filtered_effort;}, filter);
+
+		list.effort.clear();
+
+        std::set<const Node *> nodes;
+		for (const auto &item: list.items)
+		{
+			const auto &node = item.node();
+
+        	// Aggregate effort comprising the nodes in this list and all their descendants
+			auto aggregate_effort = [&](const auto &node, const auto &_){
+				if (!filter(node))
+					return;
+				if (nodes.count(&node) == 0)
+				{
+					list.effort += node.my_effort;
+					nodes.insert(&node);
+				}
+			};
+			each_node(node, aggregate_effort, Direction::Push);
+		}
 	}
 
 } 

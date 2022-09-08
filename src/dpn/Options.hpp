@@ -6,6 +6,7 @@
 #include <string>
 #include <optional>
 #include <list>
+#include <set>
 #include <map>
 
 namespace dpn { 
@@ -22,6 +23,7 @@ namespace dpn {
         int verbosity_level = 0;
         bool color_output = true;
         std::optional<Sort> sort;
+        bool reverse = false;
 
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;
@@ -33,7 +35,8 @@ namespace dpn {
 
         std::optional<onto::Format> format;
 
-        bool detailed = false;
+        std::set<unsigned int> details;
+        bool detailed_ = false;
 
         //Arguments
         std::list<std::string> arguments;

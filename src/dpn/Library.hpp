@@ -11,12 +11,21 @@
 
 #include <map>
 #include <ostream>
+#include <functional>
 
 namespace dpn { 
 
 	class Library
 	{
 	public:
+		struct Filter
+		{
+			Tags tags;
+			std::optional<meta::Status> status;
+
+			bool operator()(const Node &) const;
+		};
+
 		Library(const config::Config &config, const Options &options): config_(config), options_(options) {}
 
 		void clear();
@@ -27,11 +36,11 @@ namespace dpn {
 
 		void print_debug(std::ostream &) const;
 
-		bool get(List &, meta::Status) const;
-		bool get_due(List &) const;
-		bool get_projects(List &) const;
+		bool get(List &, const Filter &);
+		bool get_due(List &, const Filter &);
+		bool get_features(List &, const Filter &);
 
-		bool export_mindmap(const std::string &root_text, const List &list, const std::filesystem::path &output_fp) const;
+		bool export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const;
 
 		template <typename Ftor>
 		void each_file(Ftor &&ftor){for (const auto &[_,file]: fp__file_) ftor(file);}
@@ -39,6 +48,12 @@ namespace dpn {
 		// Can visit nodes multiple times
 		template <typename Ftor>
 		void each_node(const Node &root, Ftor &&ftor, Direction direction) const
+		{
+			Path path;
+			each_node_(root, path, ftor, direction);
+		}
+		template <typename Ftor>
+		void each_node(Node &root, Ftor &&ftor, Direction direction)
 		{
 			Path path;
 			each_node_(root, path, ftor, direction);
@@ -56,6 +71,21 @@ namespace dpn {
 					const auto &file = it->second;
 					// We do not iterate file.root since that is an artificial node
 					for (const auto &child: file.root.childs)
+						each_node(child, ftor, direction);
+				}
+			}
+		}
+		template <typename Ftor>
+		void each_node(Ftor &&ftor, Direction direction)
+		{
+			for (const auto &root_fp: roots_)
+			{
+				const auto it = fp__file_.find(root_fp);
+				if (it != fp__file_.end())
+				{
+					auto &file = it->second;
+					// We do not iterate file.root since that is an artificial node
+					for (auto &child: file.root.childs)
 						each_node(child, ftor, direction);
 				}
 			}
@@ -101,8 +131,50 @@ namespace dpn {
 					ftor(node, path);
 			}
 		}
+		template <typename Ftor>
+		void each_node_(Node &node, Path &path, Ftor &&ftor, Direction direction)
+		{
+			{
+				const auto it = std::find_if(path.begin(), path.end(), [&](auto ptr){return ptr == &node;});
+				if (it != path.end())
+					// This is a circular dependency
+					return;
+			}
+
+			if (!node.my_includes.empty())
+			{
+				for (const auto &dep_fp: node.my_includes)
+				{
+					const auto it = fp__file_.find(dep_fp);
+					if (it != fp__file_.end())
+					{
+						auto &file = it->second;
+						// We do not iterate file.root since that is an artificial node
+						for (auto &child: file.root.childs)
+							each_node_(child, path, ftor, direction);
+					}
+				}
+			}
+			else
+			{
+				if (direction == Direction::Push)
+					ftor(node, path);
+				if (!node.childs.empty())
+				{
+					path.push_back(&node);
+					for (auto &child: node.childs)
+						each_node_(child, path, ftor, direction);
+					path.pop_back();
+				}
+				if (direction == Direction::Pull)
+					ftor(node, path);
+			}
+		}
 
 		bool resolve_dependency_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const;
+
+		void compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &);
+		void compute_effort_(List &list, const Filter &);
 
 		const config::Config &config_;
 		const Options &options_;

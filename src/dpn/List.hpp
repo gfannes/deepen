@@ -24,10 +24,11 @@ namespace dpn {
 			const Node &node() const {return *node_;}
 
 			double urgency_value() const { return node_->my_urgency ? node_->my_urgency->value() : 0.0; }
+			// Rice is computed on the total effort and is thus stable against changing filter settings
 			double rice() const
 			{
 				double res = 0.0;
-				if (const auto todo = node_->all_effort.todo(); todo > 0)
+				if (const auto todo = node_->total_effort.todo(); todo > 0)
 					res = urgency_value()/todo;
 				return res;
 			}
@@ -47,7 +48,7 @@ namespace dpn {
 				return res;
 			}
 			auto my_effort() const { return node_->my_effort; }
-			auto all_effort() const { return node_->all_effort; }
+			auto filtered_effort() const { return node_->filtered_effort; }
 
 		private:
 			const Node *node_ = nullptr;
@@ -70,15 +71,14 @@ namespace dpn {
 		}
 		void sort_on_effort()
 		{
-			auto compare = [&](const auto &lhs, const auto &rhs){return lhs.all_effort().todo() > rhs.all_effort().todo();};
+			auto compare = [&](const auto &lhs, const auto &rhs){return lhs.filtered_effort().todo() > rhs.filtered_effort().todo();};
 			std::stable_sort(items.begin(), items.end(), compare);
 		}
-		void sort(std::optional<Sort> sort)
+		void sort(Sort sort)
 		{
-			if (!sort)
-				return;
-			switch (*sort)
+			switch (sort)
 			{
+				case Sort::No: break;
 				case Sort::Rice: sort_on_rice(); break;
 				case Sort::DueDate: sort_on_duedate(); break;
 				case Sort::Effort: sort_on_effort(); break;

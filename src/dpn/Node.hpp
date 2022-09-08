@@ -42,9 +42,14 @@ namespace dpn {
 
 		std::vector<Node> childs;
 
+		std::optional<meta::State> my_state;
+		std::optional<meta::State> agg_state;
+
 		meta::Effort my_effort;
-		meta::Effort local_effort;
-		meta::Effort all_effort;
+
+		meta::Effort filtered_effort;
+		meta::Effort total_effort;
+		meta::Effort tmp_effort_;
 
 		std::optional<meta::Urgency> my_urgency;
 

@@ -39,6 +39,7 @@ namespace dpn {
 				if (state)
 				{
 					node.metas.push_back(*state);
+					node.my_state = *state;
 					continue;
 				}
 
@@ -89,12 +90,6 @@ namespace dpn {
 				strange.pop_all(text);
 			}
 			node.text = text;
-
-			if (auto state = node.template get<meta::State>())
-			{
-				if (state->status == meta::Status::Done)
-					node.my_effort.done = node.my_effort.total;
-			}
 		};
 		each_node(interpret, Direction::Push);
 		MSS(ok);

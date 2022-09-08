@@ -12,6 +12,7 @@
 #include <list>
 #include <algorithm>
 #include <iomanip>
+#include <numeric>
 
 namespace dpn { 
 
@@ -61,6 +62,7 @@ namespace dpn {
                 case Show::Actionable:  MSS(show_list_(meta::Status::Actionable), log::error() << "Could not work on Actionable items" << std::endl); break;
                 case Show::Forwarded:   MSS(show_list_(meta::Status::Forwarded),  log::error() << "Could not work on Forwarded items" << std::endl); break;
                 case Show::WIP:         MSS(show_list_(meta::Status::WIP),        log::error() << "Could not work on WIP items" << std::endl); break;
+                case Show::Done:        MSS(show_list_(meta::Status::Done),       log::error() << "Could not work on Done items" << std::endl); break;
                 case Show::DueDate:     MSS(show_list_due_(),                     log::error() << "Could not work on items with Duedate" << std::endl); break;
                 case Show::Features:    MSS(show_features_(),                     log::error() << "Could not show Features" << std::endl); break;
                 case Show::Todo:        MSS(show_todo_(),                         log::error() << "Could not show Todo" << std::endl); break;
@@ -77,20 +79,94 @@ namespace dpn {
     }
 
     //Privates
-    void App::show_items_(const List &list) const
+    bool App::show_items_(List &list, Sort sort, bool reverse, const Library::Filter &filter) const
     {
-        std::cout << "{" << std::endl;
-        for (auto item: list.items)
-        {
-            std::cout << "  [" << item.text() << "](fp:" << item.fp << ")";
-            if (auto state = item.state())
-                std::cout << "(state:" << *state << ")";
-            std::cout << "(urgency:" << item.urgency_value() << ")(effort:" << item.my_effort() << ")(rice:" << item.rice() << ")";
-            if (auto ul = item.yyyymmdd(); ul > 0)
-                std::cout << "(due:" << ul << ")";
+        MSS_BEGIN(bool);
+        
+        list.sort(sort);
+
+        enum class Row {Item, Detail, Total};
+
+        std::vector<std::size_t> ixs(list.items.size());
+        std::iota(ixs.begin(), ixs.end(), 0);
+        if (reverse)
+            std::reverse(ixs.begin(), ixs.end());
+
+        auto each_row = [&](auto lambda){
+            for (const auto ix: ixs)
+            {
+                const auto &item = list.items[ix];
+                lambda(Row::Item, ix, item.filtered_effort(), item.text(), to_string(item.path));
+                if (options_.details.count(ix))
+                {
+                    auto show_details = [&](const auto &node, const auto &path){
+                        if (!filter(node))
+                            return;
+                        if (path.empty())
+                            return;
+                        lambda(Row::Detail, -1, node.filtered_effort, node.text+std::string(2*path.size(), ' '), to_string(path));
+                    };
+                    library_.each_node(item.node(), show_details, Direction::Push);
+                }
+            }
+            lambda(Row::Total, list.items.size(), list.effort, "TOTAL", "");
+        };
+
+        std::size_t max_ix_w = 0, max_effort_w = 0, max_path_w = 0, max_text_w = 0;
+        auto update_max_w = [&](Row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path){
+            if (ix >= 0)
+                max_ix_w = std::max(max_ix_w, std::to_string(ix).size());
+            max_effort_w = std::max(max_effort_w, effort.str().size());
+            max_text_w = std::max(max_text_w, text.size());
+            max_path_w = std::max(max_path_w, path.size());
+        };
+        each_row(update_max_w);
+
+        if (options_.color_output)
+            std::cout << termcolor::colorize;
+
+        auto print = [&](Row row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path){
+            auto ix_color = termcolor::white<char>;
+            auto effort_color = termcolor::blue<char>;
+            auto text_color = termcolor::green<char>;
+            auto path_color = termcolor::yellow<char>;
+
+            switch (row)
+            {
+                case Row::Detail:
+                effort_color = termcolor::cyan<char>;
+                text_color = termcolor::cyan<char>;
+                path_color = termcolor::green<char>;
+                break;
+                case Row::Total:
+                ix_color = termcolor::magenta<char>;
+                effort_color = termcolor::magenta<char>;
+                text_color = termcolor::magenta<char>;
+                path_color = termcolor::magenta<char>;
+                break;
+            }
+
+            std::cout << ix_color << std::setw(max_ix_w) << std::left;
+            if (ix >= 0)
+                std::cout << ix;
+            else
+                std::cout << "";
+            std::cout << termcolor::reset;
+
+            std::cout << ' ' << effort_color << std::setw(max_effort_w) << std::left;
+            if (effort.total > 0)
+                std::cout << effort;
+            else
+                std::cout << "";
+            std::cout << termcolor::reset;
+
+            std::cout << ' ' << text_color << std::setw(max_text_w) << std::right << text << termcolor::reset;
+            std::cout << ' ' << path_color << std::setw(max_path_w) << std::left  << path << termcolor::reset;
             std::cout << std::endl;
-        }
-        std::cout << "}" << std::endl;
+        };
+        each_row(print);
+
+        MSS_END();
     }
 
     bool App::show_list_(meta::Status status)
@@ -100,10 +176,13 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        MSS(library_.get(list, status));
-        list.sort_on_rice();
-        std::cout << "[" << status << "](size:" << list.items.size() << ")" << std::endl;
-        show_items_(list);
+        const Library::Filter filter = {.tags = options_.tags, .status = status};
+        MSS(library_.get(list, filter));
+
+        MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
+
+        if (options_.output_filepath)
+            MSS(library_.export_mindmap(to_string(status), list, filter, *options_.output_filepath));
 
         MSS_END();
     }
@@ -114,11 +193,15 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
+        const Library::Filter filter = {.tags = options_.tags};
+
         List list;
-        MSS(library_.get_due(list));
-        list.sort_on_duedate();
-        std::cout << "[Duedate](size:" << list.items.size() << ")" << std::endl;
-        show_items_(list);
+        MSS(library_.get_due(list, filter));
+
+        MSS(show_items_(list, options_.sort.value_or(Sort::DueDate), options_.reverse, filter));
+
+        if (options_.output_filepath)
+            MSS(library_.export_mindmap("DueDate", list, filter, *options_.output_filepath));
         
         MSS_END();
     }
@@ -129,34 +212,15 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
+        const Library::Filter filter = {.tags = options_.tags};
+
         List list;
-        MSS(library_.get_projects(list));
-        list.sort(options_.sort);
+        MSS(library_.get_features(list, filter));
 
-        std::size_t effort_size = list.effort.str().size(), path_size = 0, text_size = 0;
-        for (const auto &item: list.items)
-        {
-            effort_size = std::max(effort_size, item.all_effort().str().size());
-            path_size = std::max(path_size, to_string(item.path).size());
-            text_size = std::max(text_size, item.text().size());
-        }
-
-        if (options_.color_output)
-            std::cout << termcolor::colorize;
-        for (const auto &item: list.items)
-        {
-            std::cout        << termcolor::blue   << std::setw(effort_size) << std::left  << item.all_effort()    << termcolor::reset;
-            std::cout << ' ' << termcolor::green  << std::setw(text_size)   << std::right << item.text()          << termcolor::reset;
-            std::cout << ' ' << termcolor::yellow << std::setw(path_size)   << std::left  << to_string(item.path) << termcolor::reset;
-            std::cout << std::endl;
-        }
-        std::cout        << termcolor::magenta    << std::setw(effort_size) << std::left  << list.effort    << termcolor::reset;
-        std::cout << ' ' << termcolor::magenta    << std::setw(text_size)   << std::right << ""             << termcolor::reset;
-        std::cout << ' ' << termcolor::magenta    << std::setw(path_size)   << std::left  << "TOTAL"        << termcolor::reset;
-        std::cout << std::endl;
+        MSS(show_items_(list, options_.sort.value_or(Sort::Effort), options_.reverse, filter));
 
         if (options_.output_filepath)
-            MSS(library_.export_mindmap("Features", list, *options_.output_filepath));
+            MSS(library_.export_mindmap("Features", list, filter, *options_.output_filepath));
         
         MSS_END();
     }
@@ -182,7 +246,7 @@ namespace dpn {
                     if (node.my_effort.todo() > 0)
                     {
                         total_effort += node.my_effort;
-                        std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.all_effort << termcolor::reset << std::endl;
+                        std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.filtered_effort << termcolor::reset << std::endl;
                     }
                 }
             }
@@ -252,7 +316,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         onto::Node::StreamConfig stream_config;
-        stream_config.detailed = options_.detailed;
+        stream_config.detailed = options_.detailed_;
         stream_config.mode = onto::Node::StreamConfig::List;
         stream_config.abs_filepath__node = &abs_filepath__node_;
         if (!options_.tags_.empty())
@@ -288,7 +352,7 @@ namespace dpn {
         }
 
         onto::Node::StreamConfig stream_config;
-        stream_config.detailed = options_.detailed;
+        stream_config.detailed = options_.detailed_;
         stream_config.mode = onto::Node::StreamConfig::Export;
         stream_config.abs_filepath__node = &abs_filepath__node_;
         if (!options_.tags_.empty())

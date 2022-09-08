@@ -21,7 +21,8 @@ namespace dpn { namespace meta {
 		Canceled,
 	};
 
-	std::ostream &operator<<(std::ostream &, Status);
+	std::string to_string(Status);
+	inline std::ostream &operator<<(std::ostream &os, Status status) {return os << to_string(status);}
 
 	class State
 	{
@@ -29,6 +30,8 @@ namespace dpn { namespace meta {
 		Status status = Status::Inbox;
 
 		std::string text;
+
+		bool operator==(const State &rhs) const;
 	};
 
 	bool parse(std::optional<State> &, gubg::Strange &);

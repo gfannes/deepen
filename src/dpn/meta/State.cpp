@@ -3,6 +3,15 @@
 
 namespace dpn { namespace meta { 
 
+	bool State::operator==(const State &rhs) const
+	{
+		if (status != rhs.status)
+			return false;
+		if (text != rhs.text)
+			return false;
+		return true;
+	}
+
 	bool parse(std::optional<State> &state_opt, gubg::Strange &strange)
 	{
 		MSS_BEGIN(bool);
@@ -33,18 +42,18 @@ namespace dpn { namespace meta {
 		MSS_END();
 	}
 
-	std::ostream &operator<<(std::ostream &os, Status status)
+	std::string to_string(Status status)
 	{
 		switch (status)
 		{
-			case Status::Inbox: os << "Inbox"; break;
-			case Status::Actionable: os << "Actionable"; break;
-			case Status::Forwarded: os << "Forwarded"; break;
-			case Status::WIP: os << "WIP"; break;
-			case Status::Done: os << "Done"; break;
-			case Status::Canceled: os << "Canceled"; break;
+			case Status::Inbox: return "Inbox"; break;
+			case Status::Actionable: return "Actionable"; break;
+			case Status::Forwarded: return "Forwarded"; break;
+			case Status::WIP: return "WIP"; break;
+			case Status::Done: return "Done"; break;
+			case Status::Canceled: return "Canceled"; break;
 		}
-		return os;
+		return "<Unknown status>";
 	}
 
 	std::ostream &operator<<(std::ostream &os, const State &state)

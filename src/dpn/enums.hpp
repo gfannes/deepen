@@ -1,6 +1,9 @@
 #ifndef HEADER_dpn_enums_hpp_ALREADY_INCLUDED
 #define HEADER_dpn_enums_hpp_ALREADY_INCLUDED
 
+#include <string>
+#include <ostream>
+
 namespace dpn { 
 
     enum class Verb
@@ -10,7 +13,7 @@ namespace dpn {
 
     enum class Show
     {
-        Inbox, Actionable, Forwarded, WIP, DueDate, Features, Todo, KeyValues, KeyValues_v, Debug,
+        Inbox, Actionable, Forwarded, WIP, Done, DueDate, Features, Todo, KeyValues, KeyValues_v, Debug,
     };
 
     enum class Direction
@@ -20,7 +23,7 @@ namespace dpn {
 
     enum class Sort
     {
-        Effort, Rice, DueDate,
+        No, Effort, Rice, DueDate,
     };
 
 }

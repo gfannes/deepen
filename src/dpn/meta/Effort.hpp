@@ -23,6 +23,8 @@ namespace dpn { namespace meta {
 
 		Effort &operator+=(const Effort &rhs);
 
+		void clear() {*this = Effort{};}
+
 		static std::string to_dsl(unsigned int count);
 		static bool from_dsl(unsigned int &count, gubg::Strange &);
 	};
