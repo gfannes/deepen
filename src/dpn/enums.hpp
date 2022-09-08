@@ -23,7 +23,7 @@ namespace dpn {
 
     enum class Sort
     {
-        No, Effort, Rice, DueDate,
+        No, Effort, Urgency, Rice, DueDate,
     };
 
 }

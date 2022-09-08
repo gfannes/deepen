@@ -86,7 +86,9 @@ namespace dpn {
                                 sort = s;
                             return !!sort;
                         };
-                        MSS(set_sort_if("effort", Sort::Effort)
+                        MSS(set_sort_if("no", Sort::Effort)
+                            || set_sort_if("effort", Sort::Effort)
+                            || set_sort_if("urgency", Sort::Urgency)
                             || set_sort_if("rice", Sort::Rice)
                             || set_sort_if("due", Sort::DueDate)
                             , log::error() << "Unknown sort type '" << tmp << "'" << std::endl);

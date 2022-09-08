@@ -59,6 +59,11 @@ namespace dpn {
 
 		void clear(){*this = List{};}
 
+		void sort_on_urgency()
+		{
+			auto compare = [&](const auto &lhs, const auto &rhs){return lhs.urgency_value() > rhs.urgency_value();};
+			std::stable_sort(items.begin(), items.end(), compare);
+		}
 		void sort_on_rice()
 		{
 			auto compare = [&](const auto &lhs, const auto &rhs){return lhs.rice() > rhs.rice();};
@@ -79,6 +84,7 @@ namespace dpn {
 			switch (sort)
 			{
 				case Sort::No: break;
+				case Sort::Urgency: sort_on_urgency(); break;
 				case Sort::Rice: sort_on_rice(); break;
 				case Sort::DueDate: sort_on_duedate(); break;
 				case Sort::Effort: sort_on_effort(); break;
