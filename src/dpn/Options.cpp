@@ -169,7 +169,7 @@ namespace dpn {
             oss                      << std::setw(4)               << " ";
             oss << termcolor::yellow << std::setw(6)  << std::left << sh << termcolor::reset;
             oss << termcolor::yellow << std::setw(16) << std::left << lh << termcolor::reset;
-            oss << termcolor::blue   << std::setw(12) << std::left << opt << termcolor::reset;
+            oss << termcolor::blue   << std::setw(30) << std::left << opt << termcolor::reset;
             oss                      << std::setw(6)  << std::left << expl;
             oss << std::endl;
         };
@@ -181,7 +181,8 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
-        option("s", "show", "inbox|action|forward|wip|done|due|feature|todo|kv|KV", "Show list or items");
+        option("s", "show", "inbox|action|forward|wip|", "Show list or items");
+        option("", "", "done|due|feature|todo|kv|KV", "");
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");
@@ -191,6 +192,7 @@ namespace dpn {
         option("-o", "--output", "<FILEPATH>", "Set output filepath");
         option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
+        option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
         option("-t", "--tag", "<STRING>:<STRING>", "Add key-value tag");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");
