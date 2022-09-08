@@ -138,12 +138,15 @@ namespace dpn {
                 text_color = termcolor::cyan<char>;
                 path_color = termcolor::green<char>;
                 break;
+
                 case Row::Total:
                 ix_color = termcolor::magenta<char>;
                 effort_color = termcolor::magenta<char>;
                 text_color = termcolor::magenta<char>;
                 path_color = termcolor::magenta<char>;
                 break;
+                
+                default: break;
             }
 
             std::cout << ix_color << std::setw(max_ix_w) << std::left;
