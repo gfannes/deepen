@@ -1,33 +1,55 @@
-# Features
+# ^my:dpn Features
 
 ## Input formats
-### .. Markdown
+### Markdown
 * .@ Support line number
-### .. Naft
+### Naft
 * .@ Support line number
-### .@ Freemind
-* .@ Implement gubg/xml/Reader
+### Freemind
+* .. Implement gubg/xml/Reader
 ### .? Source code
-* .@ Support line number
-* Line-based commend identification
+* Parse source code line by line and detect commend line as whitespace+comment chars
+* Support using wildcards in `&include()`
+* .? Do we need to activate/disable file extensions to reduce loading times?
+* Support line numbers
 
 ## GTD lists
-* Provide inspection via TUI
-** Toggle list
-** 2-pane: list + node view
+* Static
+* .@ Interactive
+** Provide inspection via TUI
+*** Select TUI framework
+**** [ftxui](https://github.com/ArthurSonzogni/FTXUI) was used in proast
+*** Toggle list
+*** 2-pane: list + node view
 
 ## Metadata
-* .@ Aggregate costs at different levels
-* .. !B Change &include: to &include()
-* .@ Aggregate metadata through Nodes and Files
+* .. Aggregate costs at different levels
+* .. Change &include: to &include()
+* .. Aggregate metadata through Nodes and Files
 
-## .? Priority
-* The priority number should be computed after the cost has been aggregated
-* The priority number should not be affected by the level of detail: compute it where specified and aggregate with max
+## !a Features, Urgency, RICE
+* A Feature is something that has an external value, eg, interest by a customer. Adding an Urgency to a Node will make `dpn` interpret it as a Feature.
+* Urgency is the multiplication of `reach`, `impact` and `confidence` and is indicated as `!<reach><impact><confidence>`
+** Optional `reach` indicates the number of people impacted by a feature, default is 1
+** .@ $1q Mandatory `impact` indicates the impact a certain feature has. This is a letter scale where the downcase are powers of 2, and upcase increases the impact with 50%:
+*** a=1, b=2, c=4, d=8, ...
+*** A=1.5, B=3, C=6, D=12, ...
+** Optional `confidence` is a number between 0 and 1, default is 1
+* When two tasks with the same Urgency have different completion Effort, it makes sense to focus on the task with the smaller completion Effort. This is what RICE indicates: Urgency/Effort.
+* The RICE indicator is only computed for Nodes that have an Urgency specified: the accumulated Effort is used there, and not the Effort of all the descendant Nodes.
+
+## .@ !a $2h Priority
+Similar to Urgency, Nodes can have a [MoSCoW](https://en.wikipedia.org/wiki/MoSCoW_method) Priority:
+* `must`: Without this item, the higher-level Feature makes no sense
+* `should`: This item is expected to be part of the higher-level Feature
+* `could`: This item is considered as optional, but still benificial
+* `wont`: This item does not impact the value of the higher-level Feature
+$2h The Priority is indicated as `.[mscw]` and is inherited from parents when unset
+* Since a Node can have multiple parents via the `&include()` mechanism, the Priority is effectively a bitmask
 
 ## Configuration
 * .. Load default inputs from config file
-* .@ !a Use gubg/naft/Reader to load Config
+* .@ $2h Use gubg/naft/Reader to load Config
 * .? Support specifying an editor for the different file formats
 ** With line number
 

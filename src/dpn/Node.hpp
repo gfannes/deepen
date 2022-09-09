@@ -3,6 +3,7 @@
 
 #include <dpn/Attribute.hpp>
 #include <dpn/meta/State.hpp>
+#include <dpn/meta/Moscow.hpp>
 #include <dpn/meta/Effort.hpp>
 #include <dpn/meta/Duedate.hpp>
 #include <dpn/meta/Urgency.hpp>
@@ -37,13 +38,16 @@ namespace dpn {
 		unsigned int depth = 0;
 		Attributes attributes;
 
-		using Meta = std::variant<meta::State, meta::Effort, meta::Duedate, meta::Urgency, meta::Command, meta::Tag>;
+		using Meta = std::variant<meta::State, meta::Moscow, meta::Effort, meta::Duedate, meta::Urgency, meta::Command, meta::Tag>;
 		std::vector<Meta> metas;
 
 		std::vector<Node> childs;
 
 		std::optional<meta::State> my_state;
 		std::optional<meta::State> agg_state;
+
+		std::optional<meta::Moscow> my_moscow;
+		meta::Moscow agg_moscow;
 
 		meta::Effort my_effort;
 

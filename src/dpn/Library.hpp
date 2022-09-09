@@ -22,6 +22,7 @@ namespace dpn {
 		{
 			Tags tags;
 			std::optional<meta::Status> status;
+			std::optional<meta::Moscow> moscow;
 
 			bool operator()(const Node &) const;
 		};

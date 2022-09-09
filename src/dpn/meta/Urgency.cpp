@@ -12,13 +12,13 @@ namespace dpn { namespace meta {
 
 		v *= reach.value_or(1);
 
-		if ('A' <= impact && impact <= 'Z')
+		if ('a' <= impact && impact <= 'z')
 		{
-			v *= std::exp2(double(impact-'A'));
+			v *= std::exp2(double(impact-'a'));
 		}
-		else if ('a' <= impact && impact <= 'z')
+		else if ('A' <= impact && impact <= 'Z')
 		{
-			v *= 0.75*std::exp2(double(impact-'a'));
+			v *= 1.5*std::exp2(double(impact-'A'));
 		}
 
 		v *= confidence.value_or(1.0);

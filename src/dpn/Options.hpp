@@ -3,6 +3,7 @@
 
 #include <dpn/enums.hpp>
 #include <dpn/onto/enums.hpp>
+#include <dpn/meta/Moscow.hpp>
 #include <string>
 #include <optional>
 #include <list>
@@ -24,6 +25,7 @@ namespace dpn {
         bool color_output = true;
         std::optional<Sort> sort;
         bool reverse = false;
+        std::optional<meta::Moscow> moscow;
 
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;

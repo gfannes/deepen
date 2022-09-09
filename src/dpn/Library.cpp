@@ -24,6 +24,11 @@ namespace dpn {
 			MSS_Q(node.agg_state->status == *status);
 		}
 
+		if (moscow)
+		{
+			MSS_Q(moscow->intersect(node.agg_moscow).any());
+		}
+
 		MSS_END();
 	}
 
@@ -227,20 +232,19 @@ namespace dpn {
 			}
 		}
 
-		// Aggregate the states from root to leaf
+		// Aggregate the states and moscow from root to leaf
 		{
 			bool ok = true;
-			auto aggregate_state = [&](auto &node, const auto &path){
+			auto aggregate = [&](auto &node, const auto &path){
+				// Aggregate State
 				if (node.my_state)
 				{
 					if (!node.agg_state)
 						node.agg_state = node.my_state;
 					AGG(ok, node.agg_state == node.my_state, log::error() << "State conflict detected with node.my_state" << std::endl);
 				}
-				else
+				else if (!path.empty())
 				{
-					if (path.empty())
-						return;
 					const auto &parent = *path.back();
 					if (parent.agg_state)
 					{
@@ -249,8 +253,19 @@ namespace dpn {
 						AGG(ok, node.agg_state == parent.agg_state, log::error() << "State conflict detected with parent.agg_state" << std::endl);
 					}
 				}
+
+				// Aggregate Moscow
+				if (node.my_moscow)
+				{
+					node.agg_moscow = *node.my_moscow;
+				}
+				else if (!path.empty())
+				{
+					const auto &parent = *path.back();
+					node.agg_moscow.merge(parent.agg_moscow);
+				}
 			};
-			each_node(aggregate_state, Direction::Push);
+			each_node(aggregate, Direction::Push);
 			MSS(ok);
 		}
 
@@ -319,6 +334,8 @@ namespace dpn {
 				{
 					if (auto *state = std::get_if<meta::State>(&meta))
 						os << "[State](" << *state << ")";
+					else if (auto *moscow = std::get_if<meta::Moscow>(&meta))
+						os << *moscow;
 					else if (auto *effort = std::get_if<meta::Effort>(&meta))
 						os << "[Effort](" << *effort << ")";
 					else if (auto *duedate = std::get_if<meta::Duedate>(&meta))

@@ -43,6 +43,15 @@ namespace dpn {
 					continue;
 				}
 
+				std::optional<meta::Moscow> moscow;
+				AGG(ok, meta::parse(moscow, strange), return);
+				if (moscow)
+				{
+					node.metas.push_back(*moscow);
+					node.my_moscow = *moscow;
+					continue;
+				}
+
 				std::optional<meta::Effort> effort;
 				AGG(ok, meta::parse(effort, strange), return);
 				if (effort)

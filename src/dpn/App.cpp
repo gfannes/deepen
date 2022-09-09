@@ -179,7 +179,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        const Library::Filter filter = {.tags = options_.tags, .status = status};
+        const Library::Filter filter = {.tags = options_.tags, .status = status, .moscow = options_.moscow};
         MSS(library_.get(list, filter));
 
         MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
@@ -196,7 +196,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.tags = options_.tags};
+        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_due(list, filter));
@@ -215,7 +215,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.tags = options_.tags};
+        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_features(list, filter));

@@ -113,6 +113,23 @@ namespace dpn {
                             MSS(strange.pop_if(',') || strange.empty(), log::error() << "The details list should be comma-separated" << std::endl);
                         }
                     }
+                    else if (is("-m", "--moscow"))
+                    {
+                        MSS(argr.pop(tmp), log::error() << "Expected moscow string" << std::endl);
+                        moscow.emplace();
+                        for (gubg::Strange strange{tmp}; !strange.empty(); )
+                        {
+                            if (strange.pop_if('m'))
+                                moscow->must = true;
+                            else if (strange.pop_if('s'))
+                                moscow->should = true;
+                            else if (strange.pop_if('c'))
+                                moscow->could = true;
+                            else if (strange.pop_if('w'))
+                                moscow->wont = true;
+                            else MSS(false, log::error() << "Could not interpert moscow from `" << tmp << "`" << std::endl);
+                        }
+                    }
                     else if (is("-f", "--format"))
                     {
                         MSS(argr.pop(tmp),                                                            log::error() << "Expected a tag" << std::endl);
@@ -194,6 +211,7 @@ namespace dpn {
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
         option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
         option("-t", "--tag", "<STRING>:<STRING>", "Add key-value tag");
+        option("-m", "--moscow", "[mscw]+", "Moscow priorities to use");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");
 

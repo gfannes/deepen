@@ -16,8 +16,17 @@ namespace dpn { namespace meta {
 	{
 		MSS_BEGIN(bool);
 
+		auto sp = strange;
+
 		if (strange.pop_if('.'))
 		{
+			if (strange.pop_if_any("mscw"))
+			{
+				// This is a Moscow iso State
+				strange = sp;
+				return true;
+			}
+
 			auto check = [&](char ch, Status status){
 				MSS_BEGIN(bool);
 				if (!state_opt && strange.pop_if(ch))
