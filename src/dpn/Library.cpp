@@ -411,6 +411,68 @@ namespace dpn {
 		MSS_END();
 	}
 
+	bool Library::get_nodes_links(Id__Node &nodes, Id__DepIds &links) const
+	{
+		MSS_BEGIN(bool);
+
+		nodes.clear();
+		links.clear();
+
+		std::map<const Node *, std::size_t> node__id;
+		for (const auto &[_,file]: fp__file_)
+		{
+			auto add_node = [&](auto &node, const auto &_){
+				if (auto p = node__id.emplace(&node, node__id.size()); p.second)
+					nodes.push_back(&node);
+			};
+			file.each_node(add_node, Direction::Push);
+		}
+
+		const auto nr_nodes = node__id.size();
+		for (const auto &[_,file]: fp__file_)
+		{
+			auto add_links = [&](auto &node, const auto &path){
+				const auto me_id = node__id[&node];
+
+				// Link from parent to me
+				if (!path.empty())
+				{
+					const auto parent_id = node__id[path.back()];
+					links[parent_id].insert(me_id);
+				}
+
+				// Link from child to previous child
+				const Node *prev_child = nullptr;
+				for (const auto &child: node.childs)
+				{
+					if (prev_child)
+					{
+						const auto child_id = node__id[&child];
+						const auto prev_child_id = node__id[prev_child];
+						links[child_id].insert(prev_child_id);
+					}
+					prev_child = &child;
+				}
+
+				// Link from me to all_dependencies
+				for (const auto &incl_fp: node.my_includes)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						const auto dep_id = node__id[&file.root];
+						links[me_id].insert(dep_id);
+					}
+				}
+			};
+			file.each_node(add_links, Direction::Push);
+		}
+		MSS(nr_nodes == node__id.size());
+
+		MSS_END();
+	}
+
 	bool Library::export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);

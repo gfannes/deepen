@@ -10,10 +10,14 @@
 #include <gubg/std/filesystem.hpp>
 
 #include <map>
+#include <set>
 #include <ostream>
 #include <functional>
 
 namespace dpn { 
+
+	using Id__Node = std::vector<const Node *>;
+	using Id__DepIds = std::map<std::size_t, std::set<std::size_t>>;
 
 	class Library
 	{
@@ -42,6 +46,8 @@ namespace dpn {
 		bool get(List &, const Filter &);
 		bool get_due(List &, const Filter &);
 		bool get_features(List &, const Filter &);
+
+        bool get_nodes_links(Id__Node &, Id__DepIds &) const;
 
 		bool export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const;
 

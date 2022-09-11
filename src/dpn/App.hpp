@@ -29,6 +29,7 @@ namespace dpn {
         bool update_(bool with_aggregates);
         bool export_();
         bool run_command_();
+        bool plan_();
 
         Options options_;
         config::Config config_;

@@ -4,6 +4,16 @@
 
 namespace dpn { 
 
+	std::set<std::filesystem::path> Node::my_dependencies() const
+	{
+		auto res = my_includes;
+		{
+			auto copy = my_requires;
+			res.merge(copy);
+		}
+		return res;
+	}
+
 	std::string Node::path(const Path &path, char sep) const
 	{
 		std::string str;

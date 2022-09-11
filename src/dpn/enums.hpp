@@ -8,7 +8,7 @@ namespace dpn {
 
     enum class Verb
     {
-        Help, UpdateWithoutAggregates, UpdateWithAggregates, Export, List, Run, Show,
+        Help, UpdateWithoutAggregates, UpdateWithAggregates, Export, List, Run, Show, Plan,
     };
 
     enum class Show

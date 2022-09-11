@@ -43,6 +43,7 @@ namespace dpn {
                     else if (is("U", "Update")) {verb_opt = Verb::UpdateWithAggregates;}
                     else if (is("e", "export")) {verb_opt = Verb::Export;}
                     else if (is("r", "run"))    {verb_opt = Verb::Run;}
+                    else if (is("p", "plan"))   {verb_opt = Verb::Plan;}
                     else if (is("s", "show"))
                     {
                         verb_opt = Verb::Show;
@@ -198,6 +199,7 @@ namespace dpn {
         option("U", "Update", "", "Perform update operation, do include aggregates");
         option("e", "export", "", "Perform export operation");
         option("r", "run", "", "Run command composed from the arguments in each root folder");
+        option("p", "plan", "", "Plan selected items");
         option("s", "show", "inbox|action|forward|wip|", "Show list or items");
         option("", "", "done|due|feature|todo|kv|KV", "");
 

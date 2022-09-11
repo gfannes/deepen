@@ -54,6 +54,8 @@ namespace dpn {
 
             case Verb::Run:                     MSS(run_command_(), log::error() << "Could not run command" << std::endl); break;
 
+            case Verb::Plan:                    MSS(plan_(), log::error() << "Could not run plan" << std::endl); break;
+
             case Verb::Show:
             MSS(!!options_.show_opt);
             switch (*options_.show_opt)
@@ -79,6 +81,36 @@ namespace dpn {
     }
 
     //Privates
+    bool App::plan_()
+    {
+        MSS_BEGIN(bool);
+
+        MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
+
+        Id__Node id__node;
+        Id__DepIds id__dep_ids;
+        MSS(library_.get_nodes_links(id__node, id__dep_ids));
+
+        if (options_.output_filepath)
+        {
+            const std::filesystem::path base = *options_.output_filepath;
+            if (!std::filesystem::exists(base))
+                std::filesystem::create_directories(base);
+            std::ofstream nodes_fo{base/"nodes.tsv"};
+            std::ofstream links_fo{base/"links.tsv"};
+
+            for (auto id = 0u; id < id__node.size(); ++id)
+                nodes_fo << id << '\t' << id__node[id]->text << std::endl;
+            for (const auto &[id,dep_ids]: id__dep_ids)
+            {
+                for (const auto dep_id: dep_ids)
+                    links_fo << id << '\t' << dep_id << std::endl;
+            }
+        }
+
+        MSS_END();
+    }
+
     bool App::show_items_(List &list, Sort sort, bool reverse, const Library::Filter &filter) const
     {
         MSS_BEGIN(bool);

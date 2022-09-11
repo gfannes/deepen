@@ -59,6 +59,8 @@ namespace dpn {
 
 		std::set<std::filesystem::path> my_includes;
 		std::set<std::filesystem::path> my_requires;
+		std::set<std::filesystem::path> my_dependencies() const;
+		
 		std::set<std::filesystem::path> all_dependencies;
 
 		Tags my_tags;
