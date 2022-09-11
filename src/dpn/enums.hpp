@@ -25,6 +25,19 @@ namespace dpn {
     {
         No, Effort, Urgency, Rice, DueDate,
     };
+    inline std::string to_string(Sort e)
+    {
+        switch (e)
+        {
+            case Sort::No: return "No"; break;
+            case Sort::Effort: return "Effort"; break;
+            case Sort::Urgency: return "Urgency"; break;
+            case Sort::Rice: return "Rice"; break;
+            case Sort::DueDate: return "DueDate"; break;
+        }
+        return "<Unknown Sort>";
+    }
+    inline std::ostream &operator<<(std::ostream &os, Sort e) {return os << to_string(e);}
 
 }
 

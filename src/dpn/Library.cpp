@@ -155,7 +155,7 @@ namespace dpn {
 		for (bool dirty = true; dirty; )
 		{
 			dirty = false;
-			for (auto &[_,file]: fp__file_)
+			for (auto &[fp,file]: fp__file_)
 			{
 				const auto orig_size = file.root.all_dependencies.size();
 
@@ -166,6 +166,9 @@ namespace dpn {
 					const auto &incl_file = it->second;
 					file.root.all_dependencies.insert(incl_file.root.all_dependencies.begin(), incl_file.root.all_dependencies.end());
 				}
+
+				// Remove ourselves from root.all_dependencies
+				file.root.all_dependencies.erase(fp);
 
 				const auto new_size = file.root.all_dependencies.size();
 
@@ -186,6 +189,9 @@ namespace dpn {
 					{
 						const auto &file = it->second;
 						node.all_dependencies.insert(file.root.all_dependencies.begin(), file.root.all_dependencies.end());
+						// Remove ourselves from all_dependencies
+						if (auto fp_opt = get_fp(node); !!fp_opt)
+							node.all_dependencies.erase(*fp_opt);
 					}
 				}
 			};
@@ -284,42 +290,12 @@ namespace dpn {
 		MSS_END();
 	}
 
-	void Library::compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &filter)
+	std::optional<std::filesystem::path> Library::get_fp(const Node &node) const
 	{
-		// Compute the aggregate effort restricted to a single file, for all files and nodes
-		for (auto &[fp,file]: fp__file_)
-		{
-			auto compute_local_effort = [&](auto &node, const auto &path){
-				node.tmp_effort_.clear();
-				if (filter(node))
-					node.tmp_effort_ = node.my_effort;
-				for (const auto &child: node.childs)
-					node.tmp_effort_ += child.tmp_effort_;
-			};
-			// Direction::Pull is important to aggregate from leaf to root
-			file.each_node(compute_local_effort, Direction::Pull);
-		}
-
-		// Compute the agg_effort as tmp_effort_ + tmp_effort_ of all all_dependencies
-		// Note that agg_effort depends on the get_effort() getter
-		// The Direction does not matter
-		for (auto &[_,file]: fp__file_)
-		{
-			auto compute_total_effort = [&](auto &node, const auto &path){
-				auto &agg_effort = get_effort(node);
-				agg_effort = node.tmp_effort_;
-				for (const auto &incl_fp: node.all_dependencies)
-				{
-					auto it = fp__file_.find(incl_fp);
-					if (it != fp__file_.end())
-					{
-						const auto &file = it->second;
-						agg_effort += file.root.tmp_effort_;
-					}
-				}
-			};
-			file.each_node(compute_total_effort, Direction::Push);
-		}
+		auto it = node__fp_.find(&node);
+		if (it == node__fp_.end())
+			return std::nullopt;
+		return it->second;
 	}
 
 	void Library::print_debug(std::ostream &os) const
@@ -366,12 +342,15 @@ namespace dpn {
 
 		list.clear();
 
+		auto filter_wo_moscow = filter;
+		filter_wo_moscow.moscow.reset();
+
 		auto append = [&](const auto &node, const auto &path){
-			if (!filter(node))
+			if (!filter_wo_moscow(node))
 				return;
-			if (filter.status)
+			if (filter_wo_moscow.status)
 			{
-				if (node.my_state && node.my_state->status == *filter.status)
+				if (node.my_state && node.my_state->status == *filter_wo_moscow.status)
 				{
 					auto &item = list.items.emplace_back(node);
 					item.path = path;
@@ -380,6 +359,7 @@ namespace dpn {
 		};
 		each_node(append, Direction::Push);
 
+		set_fps_(list);
 		compute_effort_(list, filter);
 
 		MSS_END();
@@ -393,15 +373,16 @@ namespace dpn {
 
 		auto append = [&](const auto &node, const auto &path){
 			if (!filter(node))
-            	return;
-            if (auto *duedate = node.template get<meta::Duedate>())
-            {
-            	auto &item = list.items.emplace_back(node);
-            	item.path = path;
-            }
+				return;
+			if (auto *duedate = node.template get<meta::Duedate>())
+			{
+				auto &item = list.items.emplace_back(node);
+				item.path = path;
+			}
 		};
 		each_node(append, Direction::Push);
 
+		set_fps_(list);
 		compute_effort_(list, filter);
 
 		MSS_END();
@@ -413,17 +394,18 @@ namespace dpn {
 
 		list.clear();
 
-        auto lambda = [&](const auto &node, const auto &path){
-        	if (!filter(node))
-        		return;
-            if (node.my_urgency)
-            {
-            	auto &item = list.items.emplace_back(node);
-            	item.path = path;
-            }
-        };
-        each_node(lambda, Direction::Push);
+		auto lambda = [&](const auto &node, const auto &path){
+			if (!filter(node))
+				return;
+			if (node.my_urgency)
+			{
+				auto &item = list.items.emplace_back(node);
+				item.path = path;
+			}
+		};
+		each_node(lambda, Direction::Push);
 
+		set_fps_(list);
 		compute_effort_(list, filter);
 
 		MSS_END();
@@ -551,13 +533,60 @@ namespace dpn {
 		MSS_END();
 	}
 
+	void Library::set_fps_(List &list)
+	{
+		for (auto &item: list.items)
+		{
+			if (auto fp_opt = get_fp(item.node()); !!fp_opt)
+				item.fp = *fp_opt;
+		}
+	}
+
+	void Library::compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &filter)
+	{
+		// Compute the aggregate effort restricted to a single file, for all files and nodes
+		for (auto &[fp,file]: fp__file_)
+		{
+			auto compute_local_effort = [&](auto &node, const auto &path){
+				node.tmp_effort_.clear();
+				if (filter(node))
+					node.tmp_effort_ = node.my_effort;
+				for (const auto &child: node.childs)
+					node.tmp_effort_ += child.tmp_effort_;
+			};
+			// Direction::Pull is important to aggregate from leaf to root
+			file.each_node(compute_local_effort, Direction::Pull);
+		}
+
+		// Compute the agg_effort as tmp_effort_ + tmp_effort_ of all all_dependencies
+		// Note that agg_effort depends on the get_effort() getter
+		// The Direction does not matter
+		for (auto &[_,file]: fp__file_)
+		{
+			auto compute_total_effort = [&](auto &node, const auto &path){
+				auto &agg_effort = get_effort(node);
+				agg_effort = node.tmp_effort_;
+				for (const auto &incl_fp: node.all_dependencies)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						agg_effort += file.root.tmp_effort_;
+					}
+				}
+			};
+			file.each_node(compute_total_effort, Direction::Push);
+		}
+	}
+
 	void Library::compute_effort_(List &list, const Filter &filter)
 	{
 		compute_effort_([](Node &node) -> meta::Effort& {return node.filtered_effort;}, filter);
 
 		list.effort.clear();
 
-        std::set<const Node *> nodes;
+		std::set<const Node *> nodes;
 		for (const auto &item: list.items)
 		{
 			const auto &node = item.node();

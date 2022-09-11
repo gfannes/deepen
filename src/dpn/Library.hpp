@@ -35,6 +35,8 @@ namespace dpn {
 
 		bool resolve();
 
+		std::optional<std::filesystem::path> get_fp(const Node &) const;
+
 		void print_debug(std::ostream &) const;
 
 		bool get(List &, const Filter &);
@@ -174,6 +176,7 @@ namespace dpn {
 
 		bool resolve_dependency_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const;
 
+		void set_fps_(List &list);
 		void compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &);
 		void compute_effort_(List &list, const Filter &);
 

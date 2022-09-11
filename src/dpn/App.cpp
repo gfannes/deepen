@@ -96,7 +96,7 @@ namespace dpn {
             for (const auto ix: ixs)
             {
                 const auto &item = list.items[ix];
-                lambda(Row::Item, ix, item.filtered_effort(), item.text(), to_string(item.path));
+                lambda(Row::Item, ix, item.filtered_effort(), to_string(item.path), item.text(), item.fp.string());
                 if (options_.details.count(ix))
                 {
                     auto show_details = [&](const auto &node, const auto &path){
@@ -104,46 +104,45 @@ namespace dpn {
                             return;
                         if (path.empty())
                             return;
-                        lambda(Row::Detail, -1, node.filtered_effort, node.text+std::string(2*path.size(), ' '), to_string(path));
+                        lambda(Row::Detail, -1, node.filtered_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
                     library_.each_node(item.node(), show_details, Direction::Push);
                 }
             }
-            lambda(Row::Total, list.items.size(), list.effort, "TOTAL", "");
+            lambda(Row::Total, list.items.size(), list.effort, "TOTAL", "", "");
         };
 
-        std::size_t max_ix_w = 0, max_effort_w = 0, max_path_w = 0, max_text_w = 0;
-        auto update_max_w = [&](Row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path){
+        std::size_t max_ix_w = 0, max_effort_w = 0, max_path_w = 0, max_text_w = 0, max_fp_w = 0, max_path_text_w = 0;
+        auto update_max_w = [&](Row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path, const std::string &fp){
             if (ix >= 0)
                 max_ix_w = std::max(max_ix_w, std::to_string(ix).size());
             max_effort_w = std::max(max_effort_w, effort.str().size());
             max_text_w = std::max(max_text_w, text.size());
             max_path_w = std::max(max_path_w, path.size());
+            max_path_text_w = std::max(max_path_text_w, text.size()+path.size());
         };
         each_row(update_max_w);
 
-        if (options_.color_output)
-            std::cout << termcolor::colorize;
-
-        auto print = [&](Row row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path){
+        std::string prev_fp;
+        auto print_color = [&](Row row, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
             auto ix_color = termcolor::white<char>;
             auto effort_color = termcolor::blue<char>;
-            auto text_color = termcolor::green<char>;
-            auto path_color = termcolor::yellow<char>;
+            auto path_color = termcolor::green<char>;
+            auto text_color = termcolor::yellow<char>;
+            auto fp_color = termcolor::white<char>;
 
             switch (row)
             {
                 case Row::Detail:
                 effort_color = termcolor::cyan<char>;
-                text_color = termcolor::cyan<char>;
-                path_color = termcolor::green<char>;
+                path_color = termcolor::cyan<char>;
                 break;
 
                 case Row::Total:
                 ix_color = termcolor::magenta<char>;
                 effort_color = termcolor::magenta<char>;
-                text_color = termcolor::magenta<char>;
                 path_color = termcolor::magenta<char>;
+                text_color = termcolor::magenta<char>;
                 break;
                 
                 default: break;
@@ -163,11 +162,27 @@ namespace dpn {
                 std::cout << "";
             std::cout << termcolor::reset;
 
-            std::cout << ' ' << text_color << std::setw(max_text_w) << std::right << text << termcolor::reset;
-            std::cout << ' ' << path_color << std::setw(max_path_w) << std::left  << path << termcolor::reset;
+            std::cout << ' ' << path_color                                                         << path << termcolor::reset;
+            std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::right << text << termcolor::reset;
+            std::cout << ' ' << fp_color   << std::setw(max_fp_w)                    << std::left  << (fp != prev_fp ? fp : "") << termcolor::reset;
             std::cout << std::endl;
+
+            prev_fp = fp;
         };
-        each_row(print);
+
+        auto print_tab = [&](Row row, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
+            std::cout << ix << '\t' << effort << '\t' << path << '\t' << text << '\t' << fp << std::endl;
+        };
+
+        if (options_.color_output)
+        {
+            std::cout << termcolor::colorize;
+            each_row(print_color);
+        }
+        else
+        {
+            each_row(print_tab);
+        }
 
         MSS_END();
     }
