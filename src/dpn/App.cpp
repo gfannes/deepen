@@ -87,24 +87,74 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        Id__Node id__node;
+        List nodes;
         Id__DepIds id__dep_ids;
-        MSS(library_.get_nodes_links(id__node, id__dep_ids));
+        const Library::Filter filter = {.tags = options_.tags, };
+        MSS(library_.get_nodes_links(nodes, id__dep_ids, filter), log::error() << "Could not get nodes and links" << std::endl);
 
         if (options_.output_filepath)
         {
             const std::filesystem::path base = *options_.output_filepath;
             if (!std::filesystem::exists(base))
                 std::filesystem::create_directories(base);
-            std::ofstream nodes_fo{base/"nodes.tsv"};
-            std::ofstream links_fo{base/"links.tsv"};
 
-            for (auto id = 0u; id < id__node.size(); ++id)
-                nodes_fo << id << '\t' << id__node[id]->text << std::endl;
-            for (const auto &[id,dep_ids]: id__dep_ids)
+            const char sep = '|';
+
             {
-                for (const auto dep_id: dep_ids)
-                    links_fo << id << '\t' << dep_id << std::endl;
+                auto escape = [tmp = std::string{}](const auto &str) mutable -> const std::string & {
+                    tmp = str;
+                    for (auto &ch: tmp)
+                        ch = (ch==sep ? ' ' : ch);
+                    return tmp;
+                };
+
+                std::ofstream fo{base/"nodes.tsv"};
+                fo << "id";
+                fo << sep << "description";
+                fo << sep << "effort";
+                fo << sep << "urgency";
+                fo << sep << "rice";
+                fo << sep << "duedate";
+                fo << sep << "state";
+                fo << sep << "path";
+                fo << std::endl;
+                for (auto id = 0u; id < nodes.items.size(); ++id)
+                {
+                    const auto &item = nodes.items[id];
+                    const auto &node = item.node();
+                    Path path;
+                    if (!item.path.empty())
+                        path.assign(item.path.begin()+1, item.path.end());
+                    fo << id;
+                    fo << sep << escape(node.text);
+                    fo << sep << node.my_effort.todo();
+                    fo << sep << item.urgency_value();
+                    fo << sep << item.rice();
+                    {
+                        fo << sep;
+                        if (item.yyyymmdd() > 0)
+                            fo << item.yyyymmdd();
+                    }
+                    {
+                        fo << sep;
+                        if (item.state())
+                            fo << *item.state();
+                    }
+                    fo << sep << escape(to_string(path));
+                    fo << std::endl;
+                }
+            }
+
+            {
+                std::ofstream fo{base/"links.tsv"};
+                fo << "from";
+                fo << sep << "to";
+                fo << std::endl;
+                for (const auto &[id,dep_ids]: id__dep_ids)
+                {
+                    for (const auto dep_id: dep_ids)
+                        fo << id << sep << dep_id << std::endl;
+                }
             }
         }
 

@@ -411,7 +411,7 @@ namespace dpn {
 		MSS_END();
 	}
 
-	bool Library::get_nodes_links(Id__Node &nodes, Id__DepIds &links) const
+	bool Library::get_nodes_links(List &nodes, Id__DepIds &links, const Filter &filter) const
 	{
 		MSS_BEGIN(bool);
 
@@ -421,9 +421,15 @@ namespace dpn {
 		std::map<const Node *, std::size_t> node__id;
 		for (const auto &[_,file]: fp__file_)
 		{
-			auto add_node = [&](auto &node, const auto &_){
+			auto add_node = [&](auto &node, const auto &path){
+				if (!filter(node))
+					return;
+
 				if (auto p = node__id.emplace(&node, node__id.size()); p.second)
-					nodes.push_back(&node);
+				{
+					auto &item = nodes.items.emplace_back(node);
+					item.path = path;
+				}
 			};
 			file.each_node(add_node, Direction::Push);
 		}
@@ -432,26 +438,33 @@ namespace dpn {
 		for (const auto &[_,file]: fp__file_)
 		{
 			auto add_links = [&](auto &node, const auto &path){
+				if (!filter(node))
+					return;
+
 				const auto me_id = node__id[&node];
 
 				// Link from parent to me
 				if (!path.empty())
 				{
-					const auto parent_id = node__id[path.back()];
-					links[parent_id].insert(me_id);
+					const auto &parent = *path.back();
+					if (filter(parent))
+					{
+						const auto parent_id = node__id[&parent];
+						links[parent_id].insert(me_id);
+					}
 				}
 
 				// Link from child to previous child
-				const Node *prev_child = nullptr;
+				std::optional<std::size_t> prev_child_id;
 				for (const auto &child: node.childs)
 				{
-					if (prev_child)
+					if (filter(child))
 					{
 						const auto child_id = node__id[&child];
-						const auto prev_child_id = node__id[prev_child];
-						links[child_id].insert(prev_child_id);
+						if (prev_child_id)
+							links[child_id].insert(*prev_child_id);
+						prev_child_id = child_id;
 					}
-					prev_child = &child;
 				}
 
 				// Link from me to all_dependencies
@@ -461,14 +474,17 @@ namespace dpn {
 					if (it != fp__file_.end())
 					{
 						const auto &file = it->second;
-						const auto dep_id = node__id[&file.root];
-						links[me_id].insert(dep_id);
+						if (filter(file.root))
+						{
+							const auto dep_id = node__id[&file.root];
+							links[me_id].insert(dep_id);
+						}
 					}
 				}
 			};
 			file.each_node(add_links, Direction::Push);
 		}
-		MSS(nr_nodes == node__id.size());
+		MSS(nr_nodes == node__id.size(), log::internal_error() << "More nodes were added" << std::endl);
 
 		MSS_END();
 	}
