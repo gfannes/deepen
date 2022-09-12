@@ -167,7 +167,9 @@ namespace dpn {
         
         list.sort(sort);
 
-        enum class Row {Item, Detail, Total};
+        using Level = int;
+        constexpr Level Total = -1;
+        constexpr Level Item = 0;
 
         std::vector<std::size_t> ixs(list.items.size());
         std::iota(ixs.begin(), ixs.end(), 0);
@@ -178,7 +180,7 @@ namespace dpn {
             for (const auto ix: ixs)
             {
                 const auto &item = list.items[ix];
-                lambda(Row::Item, ix, item.filtered_effort(), to_string(item.path), item.text(), item.fp.string());
+                lambda(Item, ix, item.filtered_effort(), to_string(item.path), item.text(), item.fp.string());
                 if (options_.details.count(ix))
                 {
                     auto show_details = [&](const auto &node, const auto &path){
@@ -186,16 +188,16 @@ namespace dpn {
                             return;
                         if (path.empty())
                             return;
-                        lambda(Row::Detail, -1, node.filtered_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
+                        lambda(path.size(), -1, node.filtered_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
                     library_.each_node(item.node(), show_details, Direction::Push);
                 }
             }
-            lambda(Row::Total, list.items.size(), list.effort, "TOTAL", "", "");
+            lambda(Total, list.items.size(), list.effort, "TOTAL", "", "");
         };
 
         std::size_t max_ix_w = 0, max_effort_w = 0, max_path_w = 0, max_text_w = 0, max_fp_w = 0, max_path_text_w = 0;
-        auto update_max_w = [&](Row, int ix, const meta::Effort &effort, const std::string &text, const std::string &path, const std::string &fp){
+        auto update_max_w = [&](Level, int ix, const meta::Effort &effort, const std::string &text, const std::string &path, const std::string &fp){
             if (ix >= 0)
                 max_ix_w = std::max(max_ix_w, std::to_string(ix).size());
             max_effort_w = std::max(max_effort_w, effort.str().size());
@@ -206,28 +208,41 @@ namespace dpn {
         each_row(update_max_w);
 
         std::string prev_fp;
-        auto print_color = [&](Row row, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
+        auto print_color = [&](Level level, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
             auto ix_color = termcolor::white<char>;
-            auto effort_color = termcolor::blue<char>;
-            auto path_color = termcolor::green<char>;
-            auto text_color = termcolor::yellow<char>;
+            auto effort_color = termcolor::white<char>;
+            auto path_color = termcolor::white<char>;
+            auto text_color = termcolor::white<char>;
             auto fp_color = termcolor::white<char>;
 
-            switch (row)
+            switch (level)
             {
-                case Row::Detail:
-                effort_color = termcolor::cyan<char>;
-                path_color = termcolor::cyan<char>;
-                break;
-
-                case Row::Total:
+                case Total:
                 ix_color = termcolor::magenta<char>;
                 effort_color = termcolor::magenta<char>;
                 path_color = termcolor::magenta<char>;
                 text_color = termcolor::magenta<char>;
                 break;
-                
-                default: break;
+
+                case Item:
+                ix_color = termcolor::white<char>;
+                effort_color = termcolor::blue<char>;
+                path_color = termcolor::green<char>;
+                text_color = termcolor::cyan<char>;
+                fp_color = termcolor::white<char>;
+                break;
+
+                default:
+                effort_color = termcolor::cyan<char>;
+                switch (level)
+                {
+                    case 1: path_color = termcolor::color<250, 250, 0, char>; break;
+                    case 2: path_color = termcolor::color<200, 200, 0, char>; break;
+                    case 3: path_color = termcolor::color<150, 150, 0, char>; break;
+                    case 4: path_color = termcolor::color<100, 100, 0, char>; break;
+                    default: path_color = termcolor::color<50, 50, 0, char>; break;
+                }
+                break;
             }
 
             std::cout << ix_color << std::setw(max_ix_w) << std::left;
@@ -245,14 +260,14 @@ namespace dpn {
             std::cout << termcolor::reset;
 
             std::cout << ' ' << path_color                                                         << path << termcolor::reset;
-            std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::right << text << termcolor::reset;
-            std::cout << ' ' << fp_color   << std::setw(max_fp_w)                    << std::left  << (fp != prev_fp ? fp : "") << termcolor::reset;
+            std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::left << text << termcolor::reset;
+            std::cout << ' ' << fp_color   << std::setw(max_fp_w)                    << std::left << (fp != prev_fp ? fp : "") << termcolor::reset;
             std::cout << std::endl;
 
             prev_fp = fp;
         };
 
-        auto print_tab = [&](Row row, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
+        auto print_tab = [&](Level, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
             std::cout << ix << '\t' << effort << '\t' << path << '\t' << text << '\t' << fp << std::endl;
         };
 
