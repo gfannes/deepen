@@ -337,7 +337,14 @@ namespace dpn {
         MSS(show_items_(list, options_.sort.value_or(Sort::Effort), options_.reverse, filter));
 
         if (options_.output_filepath)
-            MSS(library_.export_mindmap("Features", list, filter, *options_.output_filepath));
+        {
+            const std::filesystem::path fp = *options_.output_filepath;
+            const auto ext = fp.extension().string();
+            if (ext == ".mm")
+                MSS(library_.export_mindmap("Features", list, filter, fp));
+            if (ext == ".xml")
+                MSS(library_.export_msproj(list, filter, fp));
+        }
         
         MSS_END();
     }

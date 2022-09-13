@@ -574,6 +574,81 @@ namespace dpn {
 		MSS_END();
 	}
 
+	bool Library::export_msproj(const List &list, const Filter &filter, const std::filesystem::path &output_fp) const
+	{
+		MSS_BEGIN(bool);
+
+		const auto folder = output_fp.parent_path();
+		if (!folder.empty())
+		{
+			if (!std::filesystem::exists(folder))
+				std::filesystem::create_directories(folder);
+			MSS(std::filesystem::is_directory(folder), log::error() << "Could not create folder " << folder << std::endl);
+		}
+
+		std::ofstream fo{output_fp, std::ios::binary};
+
+		gubg::xml::Writer writer{fo};
+		writer.prolog("version", "1.0", "encoding", "UTF-8", "standalone", "yes");
+		auto project = writer.tag("Project");
+		project.attr("xmlns", "http://schemas.microsoft.com/project");
+		auto tasks = project.tag("Tasks");
+
+		auto add_task = [&](unsigned int &uid, const auto &text, unsigned int depth, unsigned int minutes){
+			auto task = tasks.tag("Task");
+			task.tag("UID") << uid;
+			task.tag("Name") << (!text.empty() ? text : "[empty]");
+			task.tag("OutlineLevel") << depth;
+			if (minutes > 0)
+			{
+				task.tag("DurationFormat") << 53;
+				{
+					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
+					task.tag("Duration") << pt;
+					task.tag("Work") << pt;
+				}
+			}
+
+			++uid;
+		};
+
+		std::set<const Node *> already_added;
+
+		unsigned int uid = 0;
+		for (auto ix = 0u; ix < list.items.size(); ++ix)
+		{
+			const auto &item = list.items[ix];
+
+			auto lambda = [&](const auto &node, const auto &path){
+				if (!already_added.insert(&node).second)
+					return;
+
+				const auto effort = node.filtered_effort;
+				if (effort.todo() == 0)
+					return;
+				if (node.childs.empty())
+				{
+					// Leaf node
+					add_task(uid, node.text, path.size()+2, node.my_effort.todo()*15);
+				}
+				else
+				{
+					// Not a leaf node
+					if (node.my_effort.todo() > 0 && node.filtered_effort.todo() > node.my_effort.todo())
+					{
+						add_task(uid, node.text, path.size()+2, 0);
+						add_task(uid, node.text+" (self)", path.size()+3, node.my_effort.todo()*15);
+					}
+					else
+						add_task(uid, node.text, path.size()+2, node.my_effort.todo()*15);
+				}
+			};
+			each_node(item.node(), lambda, Direction::Push);
+		}
+
+		MSS_END();
+	}
+
 	// Privates
 	bool Library::resolve_dependency_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const
 	{

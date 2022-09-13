@@ -49,6 +49,7 @@ namespace dpn {
         bool get_nodes_links(List &, Id__DepIds &, const Filter &) const;
 
 		bool export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const;
+		bool export_msproj(const List &list, const Filter &filter, const std::filesystem::path &output_fp) const;
 
 		template <typename Ftor>
 		void each_file(Ftor &&ftor){for (const auto &[_,file]: fp__file_) ftor(file);}
