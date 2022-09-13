@@ -125,6 +125,8 @@ namespace dpn {
 										log::warning() << "Found text in dependency node of " << fp << std::endl;
 									if (node.my_urgency)
 										log::warning() << "Found urgency in dependency node of " << fp << std::endl;
+									if (!node.childs.empty())
+										log::warning() << "Found childs in dependency node of " << fp << std::endl;
 
 									if (fp__file_.count(dep_fp))
 									{
@@ -523,6 +525,8 @@ namespace dpn {
 
 			add_effort(list.effort, root);
 
+			std::set<const Node *> already_included;
+
 			for (const auto &item: list.items)
 			{
 				std::list<gubg::xml::writer::Tag> tags;
@@ -541,6 +545,9 @@ namespace dpn {
 				auto lambda = [&](const auto &node, const auto &path){
 					if (!filter(node))
 						return;
+					if (already_included.count(&node))
+						return;
+					already_included.insert(&node);
 
 					while (!prev_path_in(node, path))
 					{

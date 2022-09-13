@@ -188,6 +188,8 @@ namespace dpn {
                             return;
                         if (path.empty())
                             return;
+                        if (node.text.empty() && node.filtered_effort.total == 0)
+                            return;
                         lambda(path.size(), -1, node.filtered_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
                     library_.each_node(item.node(), show_details, Direction::Push);
@@ -237,10 +239,10 @@ namespace dpn {
                 switch (level)
                 {
                     case 1: path_color = termcolor::color<250, 250, 0, char>; break;
-                    case 2: path_color = termcolor::color<200, 200, 0, char>; break;
-                    case 3: path_color = termcolor::color<150, 150, 0, char>; break;
-                    case 4: path_color = termcolor::color<100, 100, 0, char>; break;
-                    default: path_color = termcolor::color<50, 50, 0, char>; break;
+                    case 2: path_color = termcolor::color<200, 150, 30, char>; break;
+                    case 3: path_color = termcolor::color<160, 50, 60, char>; break;
+                    case 4: path_color = termcolor::color<130, 0, 90, char>; break;
+                    default: path_color = termcolor::color<100, 0, 120, char>; break;
                 }
                 break;
             }
