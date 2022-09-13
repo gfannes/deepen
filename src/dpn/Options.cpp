@@ -212,6 +212,7 @@ namespace dpn {
 
         oss << "Options:" << std::endl;
         option("-h", "--help", "", "Print this help");
+        option("-d", "--details", "", "Provide detailed information on selected items: comma-separated list, or '.' for _all_");
         option("-D", "--detailed", "", "Provide detailed information");
         option("-V", "--verbose", "<NUMBER>", "Set verbosity level [default: 0]");
         option("-i", "--input", "<FILEPATH>", "Add input filepath");
