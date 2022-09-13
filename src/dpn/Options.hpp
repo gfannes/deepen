@@ -38,6 +38,7 @@ namespace dpn {
         std::optional<onto::Format> format;
 
         std::set<unsigned int> details;
+        bool all_details = false;
         bool detailed_ = false;
 
         //Arguments

@@ -181,7 +181,7 @@ namespace dpn {
             {
                 const auto &item = list.items[ix];
                 lambda(Item, ix, item.filtered_effort(), to_string(item.path), item.text(), item.fp.string());
-                if (options_.details.count(ix))
+                if (options_.all_details || options_.details.count(ix))
                 {
                     auto show_details = [&](const auto &node, const auto &path){
                         if (!filter(node))
@@ -203,9 +203,10 @@ namespace dpn {
             if (ix >= 0)
                 max_ix_w = std::max(max_ix_w, std::to_string(ix).size());
             max_effort_w = std::max(max_effort_w, effort.str().size());
-            max_text_w = std::max(max_text_w, text.size());
+            const auto text_size = std::min<std::size_t>(text.size(), 150u);
+            max_text_w = std::max(max_text_w, text_size);
             max_path_w = std::max(max_path_w, path.size());
-            max_path_text_w = std::max(max_path_text_w, text.size()+path.size());
+            max_path_text_w = std::max(max_path_text_w, text_size+path.size());
         };
         each_row(update_max_w);
 

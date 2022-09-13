@@ -106,12 +106,19 @@ namespace dpn {
                     }
                     else if (is("-d", "--details"))
                     {
-                        MSS(argr.pop(tmp), log::error() << "Expected a list of uint" << std::endl);
-                        gubg::Strange strange{tmp};
-                        for (unsigned int ui; strange.pop_decimal(ui); )
+                        MSS(argr.pop(tmp), log::error() << "Expected a list of uint or a '.'" << std::endl);
+                        if (tmp == ".")
                         {
-                            details.insert(ui);
-                            MSS(strange.pop_if(',') || strange.empty(), log::error() << "The details list should be comma-separated" << std::endl);
+                            all_details = true;
+                        }
+                        else
+                        {
+                            gubg::Strange strange{tmp};
+                            for (unsigned int ui; strange.pop_decimal(ui); )
+                            {
+                                details.insert(ui);
+                                MSS(strange.pop_if(',') || strange.empty(), log::error() << "The details list should be comma-separated" << std::endl);
+                            }
                         }
                     }
                     else if (is("-m", "--moscow"))
