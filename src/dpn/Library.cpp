@@ -668,6 +668,9 @@ namespace dpn {
 		MSS_END();
 	}
 
+	// Warning: still wip
+	// .? Start from get_features
+	// .? Prune branches without effort
 	bool Library::export_msproj2(const List &list, const Id__DepIds &id__dep_ids, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);
@@ -688,7 +691,26 @@ namespace dpn {
 		project.attr("xmlns", "http://schemas.microsoft.com/project");
 		auto tasks = project.tag("Tasks");
 
-		auto add_task = [&](unsigned int &uid, const auto &text, unsigned int depth, unsigned int minutes){
+		std::map<unsigned int, unsigned int> id__parent;
+		{
+			std::map<const Node *, unsigned int> node__id;
+			for (auto ix = 0u; ix < list.items.size(); ++ix)
+			{
+				const auto &item = list.items[ix];
+				const auto &node = item.node();
+				node__id[&node] = ix;
+			}
+
+			for (auto ix = 0u; ix < list.items.size(); ++ix)
+			{
+				const auto &item = list.items[ix];
+				const auto &node = item.node();
+				if (!item.path.empty())
+					id__parent[ix] = node__id[item.path.back()];
+			}
+		}
+
+		auto add_task = [&](unsigned int uid, const auto &text, unsigned int depth, unsigned int minutes){
 			auto task = tasks.tag("Task");
 			task.tag("UID") << uid;
 			task.tag("Name") << (!text.empty() ? text : "[empty]");
@@ -706,24 +728,50 @@ namespace dpn {
 			{
 				for (const auto dep_id: it->second)
 				{
-					auto predecessor_link = task.tag("PredecessorLink");
-					predecessor_link.tag("PredecessorUID") << dep_id;
-					predecessor_link.tag("Type") << 1;
+					auto is_child = [&](){
+						auto it = id__parent.find(dep_id);
+						if (it == id__parent.end())
+							return false;
+						return it->second == uid;
+					};
+
+					if (!is_child())
+					{
+						auto predecessor_link = task.tag("PredecessorLink");
+						predecessor_link.tag("PredecessorUID") << dep_id;
+						predecessor_link.tag("Type") << 1;
+					}
 				}
 			}
-
-			++uid;
 		};
 
-		std::set<const Node *> already_added;
-
-		unsigned int uid = 0;
 		for (auto ix = 0u; ix < list.items.size(); ++ix)
 		{
 			const auto &item = list.items[ix];
 			const auto &node = item.node();
 
-			add_task(uid, node.text, item.path.size()+2, node.my_effort.todo()*15);
+			auto is_leaf = [&](){
+				return node.childs.empty();
+			};
+
+			if (is_leaf())
+			{
+				const auto todo = node.my_effort.todo();
+				if (todo > 0)
+					add_task(ix, node.text, item.path.size()+2, todo*15);
+			}
+			else
+			{
+				const auto my_todo = node.my_effort.todo();
+				const auto filtered_todo = node.filtered_effort.todo();
+				if (filtered_todo > 0)
+				{
+					if (my_todo == filtered_todo)
+						add_task(ix, node.text, item.path.size()+2, my_todo*15);
+					else
+						add_task(ix, node.text, item.path.size()+2, 0);
+				}
+			}
 		}
 
 		MSS_END();
