@@ -30,6 +30,12 @@ See RICE system: reach, impact, confidence, effort
 		* 9: 90%
 		* a/A/<nothing>: 100%
 
+# Moscow
+
+# Sequence
+* `.a`: Any sequence, no finish-to-start dependencies between childs of this Node
+* `.n`: Finish-to-start dependencies between childs of this Node [default]
+
 # Effort
 
 * `$1.2`: 1.2 hours

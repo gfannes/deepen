@@ -26,6 +26,12 @@ namespace dpn { namespace meta {
 				strange = sp;
 				return true;
 			}
+			if (strange.pop_if_any("an"))
+			{
+				// This is a Sequence iso State
+				strange = sp;
+				return true;
+			}
 
 			auto check = [&](char ch, Status status){
 				MSS_BEGIN(bool);

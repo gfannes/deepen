@@ -52,6 +52,15 @@ namespace dpn {
 					continue;
 				}
 
+				std::optional<meta::Sequence> sequence;
+				AGG(ok, meta::parse(sequence, strange), return);
+				if (sequence)
+				{
+					node.metas.push_back(*sequence);
+					node.my_sequence = *sequence;
+					continue;
+				}
+
 				std::optional<meta::Effort> effort;
 				AGG(ok, meta::parse(effort, strange), return);
 				if (effort)

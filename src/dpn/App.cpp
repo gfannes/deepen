@@ -344,7 +344,19 @@ namespace dpn {
             if (ext == ".mm")
                 MSS(library_.export_mindmap("Features", list, filter, fp));
             if (ext == ".xml")
-                MSS(library_.export_msproj(list, filter, fp));
+            {
+                if (true)
+                {
+                    List list;
+                    Id__DepIds id__dep_ids;
+                    MSS(library_.get_nodes_links(list, id__dep_ids, filter), log::error() << "Could not get nodes and links" << std::endl);
+                    MSS(library_.export_msproj2(list, id__dep_ids, fp));
+                }
+                else
+                {
+                    MSS(library_.export_msproj(list, filter, fp));
+                }
+            }
         }
         
         MSS_END();

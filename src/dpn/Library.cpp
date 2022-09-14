@@ -289,6 +289,18 @@ namespace dpn {
 
 		compute_effort_([](Node &node) -> meta::Effort& {return node.total_effort;}, Filter{});
 
+		// Push sequence from root to leaf, but only within a file, not to all dependencies
+		for (auto &[_,file]: fp__file_)
+		{
+			auto aggregate_sequence = [](auto &node, const auto &path){
+				if (node.my_sequence)
+					node.agg_sequence = *node.my_sequence;
+				else if (!path.empty())
+					node.agg_sequence = path.back()->agg_sequence;
+			};
+			file.each_node(aggregate_sequence, Direction::Push);
+		}
+
 		MSS_END();
 	}
 
@@ -314,6 +326,8 @@ namespace dpn {
 						os << "[State](" << *state << ")";
 					else if (auto *moscow = std::get_if<meta::Moscow>(&meta))
 						os << *moscow;
+					else if (auto *sequence = std::get_if<meta::Sequence>(&meta))
+						os << *sequence;
 					else if (auto *effort = std::get_if<meta::Effort>(&meta))
 						os << "[Effort](" << *effort << ")";
 					else if (auto *duedate = std::get_if<meta::Duedate>(&meta))
@@ -457,15 +471,18 @@ namespace dpn {
 				}
 
 				// Link from child to previous child
-				std::optional<std::size_t> prev_child_id;
-				for (const auto &child: node.childs)
+				if (!node.agg_sequence.any)
 				{
-					if (filter(child))
+					std::optional<std::size_t> prev_child_id;
+					for (const auto &child: node.childs)
 					{
-						const auto child_id = node__id[&child];
-						if (prev_child_id)
-							links[child_id].insert(*prev_child_id);
-						prev_child_id = child_id;
+						if (filter(child))
+						{
+							const auto child_id = node__id[&child];
+							if (prev_child_id)
+								links[child_id].insert(*prev_child_id);
+							prev_child_id = child_id;
+						}
 					}
 				}
 
@@ -622,6 +639,8 @@ namespace dpn {
 			auto lambda = [&](const auto &node, const auto &path){
 				if (!already_added.insert(&node).second)
 					return;
+				if (!filter(node))
+					return;
 
 				const auto effort = node.filtered_effort;
 				if (effort.todo() == 0)
@@ -644,6 +663,67 @@ namespace dpn {
 				}
 			};
 			each_node(item.node(), lambda, Direction::Push);
+		}
+
+		MSS_END();
+	}
+
+	bool Library::export_msproj2(const List &list, const Id__DepIds &id__dep_ids, const std::filesystem::path &output_fp) const
+	{
+		MSS_BEGIN(bool);
+
+		const auto folder = output_fp.parent_path();
+		if (!folder.empty())
+		{
+			if (!std::filesystem::exists(folder))
+				std::filesystem::create_directories(folder);
+			MSS(std::filesystem::is_directory(folder), log::error() << "Could not create folder " << folder << std::endl);
+		}
+
+		std::ofstream fo{output_fp, std::ios::binary};
+
+		gubg::xml::Writer writer{fo};
+		writer.prolog("version", "1.0", "encoding", "UTF-8", "standalone", "yes");
+		auto project = writer.tag("Project");
+		project.attr("xmlns", "http://schemas.microsoft.com/project");
+		auto tasks = project.tag("Tasks");
+
+		auto add_task = [&](unsigned int &uid, const auto &text, unsigned int depth, unsigned int minutes){
+			auto task = tasks.tag("Task");
+			task.tag("UID") << uid;
+			task.tag("Name") << (!text.empty() ? text : "[empty]");
+			task.tag("OutlineLevel") << depth;
+			if (minutes > 0)
+			{
+				task.tag("DurationFormat") << 53;
+				{
+					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
+					task.tag("Duration") << pt;
+					task.tag("Work") << pt;
+				}
+			}
+			if (auto it = id__dep_ids.find(uid); it != id__dep_ids.end() && !it->second.empty())
+			{
+				for (const auto dep_id: it->second)
+				{
+					auto predecessor_link = task.tag("PredecessorLink");
+					predecessor_link.tag("PredecessorUID") << dep_id;
+					predecessor_link.tag("Type") << 1;
+				}
+			}
+
+			++uid;
+		};
+
+		std::set<const Node *> already_added;
+
+		unsigned int uid = 0;
+		for (auto ix = 0u; ix < list.items.size(); ++ix)
+		{
+			const auto &item = list.items[ix];
+			const auto &node = item.node();
+
+			add_task(uid, node.text, item.path.size()+2, node.my_effort.todo()*15);
 		}
 
 		MSS_END();

@@ -42,17 +42,21 @@ namespace dpn { namespace meta {
 				strange = sp;
 				return true;
 			}
-
-			auto &moscow = moscow_opt.emplace();
+			if (strange.pop_if_any("an"))
+			{
+				// This is a Sequence iso Moscow
+				strange = sp;
+				return true;
+			}
 
 			if (strange.pop_if('m'))
-				moscow.must = true;
+				moscow_opt.emplace().must = true;
 			else if (strange.pop_if('s'))
-				moscow.should = true;
+				moscow_opt.emplace().should = true;
 			else if (strange.pop_if('c'))
-				moscow.could = true;
+				moscow_opt.emplace().could = true;
 			else if (strange.pop_if('w'))
-				moscow.wont = true;
+				moscow_opt.emplace().wont = true;
 
 			MSS(!!moscow_opt, log::error() << "Could not parse Moscow from " << sp.str() << std::endl);
 		}
