@@ -60,6 +60,7 @@ namespace dpn {
 		meta::Effort tmp_effort_;
 
 		std::optional<meta::Urgency> my_urgency;
+		meta::Urgency agg_urgency;
 
 		std::set<std::filesystem::path> my_includes;
 		std::set<std::filesystem::path> my_requires;

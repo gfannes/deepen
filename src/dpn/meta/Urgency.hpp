@@ -14,10 +14,12 @@ namespace dpn { namespace meta {
 	{
 	public:
 		std::optional<unsigned long> reach;
-		char impact = 'A';
+		char impact = 'a';
 		std::optional<double> confidence;
 
 		double value() const;
+
+		void merge(const Urgency &rhs);
 	};
 
 	bool parse(std::optional<Urgency> &, gubg::Strange &);

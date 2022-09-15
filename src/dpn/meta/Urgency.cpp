@@ -26,6 +26,49 @@ namespace dpn { namespace meta {
 		return v;
 	}
 
+	void Urgency::merge(const Urgency &rhs)
+	{
+		if (rhs.reach)
+			reach = std::max(reach.value_or(1), *rhs.reach);
+
+		auto to_ix = [](char ch){
+			if ('a' <= ch && ch <= 'z')
+			{
+				const unsigned int ix = ch-'a';
+				return 2*ix;
+			}
+			if ('A' <= ch && ch <= 'Z')
+			{
+				const unsigned int ix = ch-'A';
+				return 2*ix+1;
+			}
+			return 0u;
+		};
+		auto from_ix = [](unsigned int ix) -> char{
+			if (ix%2 == 0)
+			{
+				ix /= 2;
+				if (ix < 26)
+					return 'a'+ix;
+			}
+			else
+			{
+				ix /= 2;
+				if (ix < 26)
+					return 'A'+ix;
+			}
+			return '\0';
+		};
+
+		const auto my_ix = to_ix(impact);
+		const auto rhs_ix = to_ix(rhs.impact);
+		const auto max_ix = std::max(my_ix, rhs_ix);
+		impact = from_ix(max_ix);
+
+		if (rhs.confidence)
+			confidence = std::max(confidence.value_or(1.0), *rhs.confidence);
+	}
+
 	bool parse(std::optional<Urgency> &urgency, gubg::Strange &strange)
 	{
 		MSS_BEGIN(bool);

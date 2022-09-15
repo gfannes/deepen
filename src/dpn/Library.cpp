@@ -240,7 +240,7 @@ namespace dpn {
 			}
 		}
 
-		// Aggregate the states and moscow from root to leaf
+		// Aggregate the states, moscow and urgency from root to leaf
 		{
 			bool ok = true;
 			auto aggregate = [&](auto &node, const auto &path){
@@ -271,6 +271,17 @@ namespace dpn {
 				{
 					const auto &parent = *path.back();
 					node.agg_moscow.merge(parent.agg_moscow);
+				}
+
+				// Aggregate Urgency
+				if (node.my_urgency)
+				{
+					node.agg_urgency = *node.my_urgency;
+				}
+				else if (!path.empty())
+				{
+					const auto &parent = *path.back();
+					node.agg_urgency.merge(parent.agg_urgency);
 				}
 			};
 			each_node(aggregate, Direction::Push);

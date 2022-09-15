@@ -29,7 +29,7 @@ namespace dpn {
 			{
 				double res = 0.0;
 				if (const auto todo = node_->total_effort.todo(); todo > 0)
-					res = urgency_value()/todo;
+					res = node_->agg_urgency.value()/todo;
 				return res;
 			}
 			unsigned long yyyymmdd() const
