@@ -828,6 +828,15 @@ namespace dpn {
 			base = context_fp.parent_path() / incl;
 		base = base.lexically_normal();
 
+		auto push_fp = [&](const auto &fp){
+			if (std::filesystem::is_regular_file(fp))
+			{
+				if (fp != context_fp)
+					fps.push_back(fp);
+			}
+			return true;
+		};
+
 		std::vector<P> candidates;
 		if (!base.extension().empty())
 		{
@@ -843,17 +852,28 @@ namespace dpn {
 			candidates.push_back(P{base}.append("index").replace_extension(".mm"));
 		}
 
-		std::optional<P> p;
-		for (const auto &c: candidates)
+		for (const auto &candidate: candidates)
 		{
-			if (!std::filesystem::is_regular_file(c))
-				continue;
-			MSS(!p, log::error() << "Ambiguous include '" << incl << "': both '" << *p << "' and '" << c << "' match" << std::endl);
-			p = c;
-		}
-		MSS(!!p, log::error() << "Could not resolve include '" << incl << "'" << " from " << context_fp << std::endl);
+			// Transfer parts from base to dir and rel:
+			// * dir receives everything before the globbing symbol '*' is encountered
+			// * rel receives the rest
+			std::filesystem::path dir;
+			std::filesystem::path rel;
+			auto dst = &dir;
+			for (const auto part: candidate)
+			{
+				if (part.string().find('*') != std::string::npos)
+					dst = &rel;
+				*dst /= part;
+			}
 
-		fps.push_back(*p);
+			if (dst == &dir)
+				// No globbing found
+				push_fp(dir);
+			else
+				// Globbing was found
+				gubg::file::each_glob(rel.string(), push_fp, dir);
+		}
 
 		MSS_END();
 	}

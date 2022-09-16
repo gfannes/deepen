@@ -9,7 +9,7 @@
 * .. Implement gubg/xml/Reader
 ### .? Source code
 * Parse source code line by line and detect commend line as whitespace+comment chars
-* Support using wildcards in `&include()`
+* .. $1h Support using wildcards in `&include()`
 * .? Do we need to activate/disable file extensions to reduce loading times?
 * Support line numbers
 

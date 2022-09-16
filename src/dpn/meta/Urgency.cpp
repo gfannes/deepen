@@ -79,7 +79,7 @@ namespace dpn { namespace meta {
 			gubg::Strange substr;
 			MSS(strange.pop_until(substr, ' ') || strange.pop_all(substr));
 			urgency.emplace();
-			if (strange.pop_if('!'))
+			if (substr.pop_if('!'))
 				urgency->is_public = false;
 			{
 				unsigned long reach;
