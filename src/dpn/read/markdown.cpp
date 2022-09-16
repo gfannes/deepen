@@ -31,6 +31,7 @@ namespace dpn { namespace read {
 					auto &node = nodes_stack.back()->emplace_back();
 					node.text = item.text;
 					node.depth = item.level;
+					node.is_heading = (item.what == Reader::Item::HeadingOpen);
 					nodes_stack.push_back(&node.childs);
 				}
 				break;

@@ -335,7 +335,7 @@ namespace dpn {
         List list;
         MSS(library_.get_features(list, filter));
 
-        MSS(show_items_(list, options_.sort.value_or(Sort::Effort), options_.reverse, filter));
+        MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
 
         if (options_.output_filepath)
         {
@@ -368,28 +368,35 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        Path prev_path;
+        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
 
-        std::cout << termcolor::colorize;
-        std::set<const Node *> visited_nodes;
-        meta::Effort total_effort;
-        auto print = [&](const auto &node, const auto &path){
-            if (node.has_matching_tags(options_.tags))
-            {
-                if (visited_nodes.count(&node) == 0)
-                {
-                    visited_nodes.insert(&node);
+        List list;
+        MSS(library_.get_todo(list, filter));
 
-                    if (node.my_effort.todo() > 0)
-                    {
-                        total_effort += node.my_effort;
-                        std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.filtered_effort << termcolor::reset << std::endl;
-                    }
-                }
-            }
-        };
-        library_.each_node(print, Direction::Push);
-        std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
+        MSS(show_items_(list, options_.sort.value_or(Sort::No), options_.reverse, filter));
+
+        // Path prev_path;
+
+        // std::cout << termcolor::colorize;
+        // std::set<const Node *> visited_nodes;
+        // meta::Effort total_effort;
+        // auto print = [&](const auto &node, const auto &path){
+        //     if (node.has_matching_tags(options_.tags))
+        //     {
+        //         if (visited_nodes.count(&node) == 0)
+        //         {
+        //             visited_nodes.insert(&node);
+
+        //             if (node.my_effort.todo() > 0)
+        //             {
+        //                 total_effort += node.my_effort;
+        //                 std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.filtered_effort << termcolor::reset << std::endl;
+        //             }
+        //         }
+        //     }
+        // };
+        // library_.each_node(print, Direction::Push);
+        // std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
         
         MSS_END();
     }

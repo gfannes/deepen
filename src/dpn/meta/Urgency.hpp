@@ -13,6 +13,7 @@ namespace dpn { namespace meta {
 	class Urgency
 	{
 	public:
+		bool is_public = true;
 		std::optional<unsigned long> reach;
 		char impact = 'a';
 		std::optional<double> confidence;

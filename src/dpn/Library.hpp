@@ -45,6 +45,7 @@ namespace dpn {
 		bool get(List &, const Filter &);
 		bool get_due(List &, const Filter &);
 		bool get_features(List &, const Filter &);
+		bool get_todo(List &, const Filter &);
 
         bool get_nodes_links(List &, Id__DepIds &, const Filter &) const;
 
@@ -181,7 +182,7 @@ namespace dpn {
 			}
 		}
 
-		bool resolve_dependency_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const;
+		bool resolve_dependencies_(std::vector<std::filesystem::path> &fps, std::string incl, const std::filesystem::path &context_fp) const;
 
 		void set_fps_(List &list);
 		void compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &);

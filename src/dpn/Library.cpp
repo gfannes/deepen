@@ -106,36 +106,39 @@ namespace dpn {
 								if (const auto t = command->type; t == meta::Command::Include || t == meta::Command::Require)
 								{
 									const auto &dep = command->argument;
-									std::filesystem::path dep_fp;
-									if (!resolve_dependency_(dep_fp, dep, fp))
+									std::vector<std::filesystem::path> dep_fps;
+									if (!resolve_dependencies_(dep_fps, dep, fp))
 									{
 										failures.push_back(dep);
 										continue;
 									}
 
-									switch (t)
+									for (const auto &dep_fp: dep_fps)
 									{
-										case meta::Command::Include: node.my_includes.insert(dep_fp); break;
-										case meta::Command::Require: node.my_requires.insert(dep_fp); break;
-										default: break;
-									}
-									node.all_dependencies.insert(dep_fp);
+										switch (t)
+										{
+											case meta::Command::Include: node.my_includes.insert(dep_fp); break;
+											case meta::Command::Require: node.my_requires.insert(dep_fp); break;
+											default: break;
+										}
+										node.all_dependencies.insert(dep_fp);
 
-									if (!node.text.empty())
-										log::warning() << "Found text in dependency node of " << fp << std::endl;
-									if (node.my_urgency)
-										log::warning() << "Found urgency in dependency node of " << fp << std::endl;
-									if (!node.childs.empty())
-										log::warning() << "Found childs in dependency node of " << fp << std::endl;
+										if (!node.text.empty())
+											log::warning() << "Found text in dependency node of " << fp << std::endl;
+										if (node.my_urgency)
+											log::warning() << "Found urgency in dependency node of " << fp << std::endl;
+										if (!node.childs.empty())
+											log::warning() << "Found childs in dependency node of " << fp << std::endl;
 
-									if (fp__file_.count(dep_fp))
-									{
-										continue;
-									}
-									if (!add_file(dep_fp, false))
-									{
-										failures.push_back(dep);
-										continue;
+										if (fp__file_.count(dep_fp))
+										{
+											continue;
+										}
+										if (!add_file(dep_fp, false))
+										{
+											failures.push_back(dep);
+											continue;
+										}
 									}
 								}
 							}
@@ -424,7 +427,30 @@ namespace dpn {
 		auto lambda = [&](const auto &node, const auto &path){
 			if (!filter(node))
 				return;
-			if (node.my_urgency)
+			if (node.my_urgency && node.my_urgency->is_public)
+			{
+				auto &item = list.items.emplace_back(node);
+				item.path = path;
+			}
+		};
+		each_node(lambda, Direction::Push);
+
+		set_fps_(list);
+		compute_effort_(list, filter);
+
+		MSS_END();
+	}
+
+	bool Library::get_todo(List &list, const Filter &filter)
+	{
+		MSS_BEGIN(bool);
+
+		list.clear();
+
+		auto lambda = [&](const auto &node, const auto &path){
+			if (!filter(node))
+				return;
+			if (node.is_heading && node.total_effort.todo() > 0)
 			{
 				auto &item = list.items.emplace_back(node);
 				item.path = path;
@@ -789,7 +815,7 @@ namespace dpn {
 	}
 
 	// Privates
-	bool Library::resolve_dependency_(std::filesystem::path &fp, std::string incl, const std::filesystem::path &context_fp) const
+	bool Library::resolve_dependencies_(std::vector<std::filesystem::path> &fps, std::string incl, const std::filesystem::path &context_fp) const
 	{
 		MSS_BEGIN(bool);
 
@@ -827,7 +853,7 @@ namespace dpn {
 		}
 		MSS(!!p, log::error() << "Could not resolve include '" << incl << "'" << " from " << context_fp << std::endl);
 
-		p->swap(fp);
+		fps.push_back(*p);
 
 		MSS_END();
 	}

@@ -37,6 +37,7 @@ namespace dpn {
 
 		std::string text;
 		unsigned int depth = 0;
+		bool is_heading = false;
 		Attributes attributes;
 
 		using Meta = std::variant<meta::State, meta::Moscow, meta::Sequence, meta::Effort, meta::Duedate, meta::Urgency, meta::Command, meta::Tag>;
