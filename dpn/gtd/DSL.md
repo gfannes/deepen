@@ -48,7 +48,7 @@ See RICE system: reach, impact, confidence, effort
 ** .? How can you indicate an include should be added at the top level? There is for .md no mechanism to close a Heading.
 * `&include()`
 ** .. $1h Working with wildcards
-** .@ $1d Comma-separated list of files
+** .. $1d Comma-separated list of files
 
 # Metadata
 

@@ -6,6 +6,7 @@
 #include <gubg/Strange.hpp>
 
 #include <string>
+#include <vector>
 #include <optional>
 #include <ostream>
 
@@ -17,10 +18,10 @@ namespace dpn { namespace meta {
 		enum Type {Invalid, Include, Require};
 
 		Type type = Invalid;
-		std::string argument;
+		std::vector<std::string> arguments;
 
 		Command() {}
-		Command(Type type, const std::string &argument): type(type), argument(argument) {}
+		Command(Type type, const std::string &argument): type(type) {arguments.push_back(argument);}
 	};
 
 	bool parse(std::optional<Command> &, gubg::Strange &);

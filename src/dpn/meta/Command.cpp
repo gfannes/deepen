@@ -16,15 +16,24 @@ namespace dpn { namespace meta {
 			command.emplace();
 
 			gubg::Strange substr;
+			auto pop_args = [&](){
+				for (gubg::Strange arg; substr.pop_until(arg, ',') || substr.pop_all(arg); )
+				{
+					arg.strip(' ');
+					command->arguments.push_back(arg.str());
+				}
+				return true;
+			};
+
 			if (strange.pop_if("include") && strange.pop_bracket(substr, "()"))
 			{
 				command->type = Command::Include;
-				command->argument = substr.str();
+				MSS(pop_args());
 			}
 			else if (strange.pop_if("require") && strange.pop_bracket(substr, "()"))
 			{
 				command->type = Command::Require;
-				command->argument = substr.str();
+				MSS(pop_args());
 			}
 			else
 			{
@@ -40,8 +49,11 @@ namespace dpn { namespace meta {
 		switch (command.type)
 		{
 			case Command::Invalid: os << "[Invalid]"; break;
-			case Command::Include: os << "[Include](" << command.argument << ")"; break;
+			case Command::Include: os << "[Include]"; break;
+			case Command::Require: os << "[Require]"; break;
 		}
+		for (const auto &arg: command.arguments)
+			os << "(" << arg << ")";
 		return os;
 	}
 

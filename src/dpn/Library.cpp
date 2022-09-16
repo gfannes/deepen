@@ -105,39 +105,41 @@ namespace dpn {
 							{
 								if (const auto t = command->type; t == meta::Command::Include || t == meta::Command::Require)
 								{
-									const auto &dep = command->argument;
-									std::vector<std::filesystem::path> dep_fps;
-									if (!resolve_dependencies_(dep_fps, dep, fp))
+									for (const auto &dep: command->arguments)
 									{
-										failures.push_back(dep);
-										continue;
-									}
-
-									for (const auto &dep_fp: dep_fps)
-									{
-										switch (t)
-										{
-											case meta::Command::Include: node.my_includes.insert(dep_fp); break;
-											case meta::Command::Require: node.my_requires.insert(dep_fp); break;
-											default: break;
-										}
-										node.all_dependencies.insert(dep_fp);
-
-										if (!node.text.empty())
-											log::warning() << "Found text in dependency node of " << fp << std::endl;
-										if (node.my_urgency)
-											log::warning() << "Found urgency in dependency node of " << fp << std::endl;
-										if (!node.childs.empty())
-											log::warning() << "Found childs in dependency node of " << fp << std::endl;
-
-										if (fp__file_.count(dep_fp))
-										{
-											continue;
-										}
-										if (!add_file(dep_fp, false))
+										std::vector<std::filesystem::path> dep_fps;
+										if (!resolve_dependencies_(dep_fps, dep, fp))
 										{
 											failures.push_back(dep);
 											continue;
+										}
+
+										for (const auto &dep_fp: dep_fps)
+										{
+											switch (t)
+											{
+												case meta::Command::Include: node.my_includes.insert(dep_fp); break;
+												case meta::Command::Require: node.my_requires.insert(dep_fp); break;
+												default: break;
+											}
+											node.all_dependencies.insert(dep_fp);
+
+											if (!node.text.empty())
+												log::warning() << "Found text in dependency node of " << fp << std::endl;
+											if (node.my_urgency)
+												log::warning() << "Found urgency in dependency node of " << fp << std::endl;
+											if (!node.childs.empty())
+												log::warning() << "Found childs in dependency node of " << fp << std::endl;
+
+											if (fp__file_.count(dep_fp))
+											{
+												continue;
+											}
+											if (!add_file(dep_fp, false))
+											{
+												failures.push_back(dep);
+												continue;
+											}
 										}
 									}
 								}
