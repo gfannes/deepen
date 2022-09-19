@@ -16,7 +16,8 @@ namespace dpn {
 
 		MSS_Q(!node.text.empty() || !node.childs.empty() || !node.all_dependencies.empty());
 
-		MSS_Q(node.has_matching_tags(tags));
+		MSS_Q(node.has_matching_tags(incl_tags, true));
+		MSS_Q(!node.has_matching_tags(excl_tags, false));
 
 		if (status)
 		{
@@ -206,6 +207,13 @@ namespace dpn {
 		}
 
 		// Push all tags for each file from root to leave and to the all_dependencies. Keep pushing until no new tags are set into a file.root
+		{
+			auto setup_all_tags = [](auto &node, const auto &_){
+				for (const auto &[key,value]: node.my_tags)
+					node.all_tags[key].insert(value);
+			};
+			each_node(setup_all_tags, Direction::Push);
+		}
 		for (bool dirty = true; dirty; )
 		{
 			dirty = false;
@@ -215,23 +223,23 @@ namespace dpn {
 					if (path.empty())
 						return;
 					const auto &parent = *path.back();
-					for (const auto &[key,src_values]: parent.total_tags)
+					for (const auto &[key,src_values]: parent.all_tags)
 					{
 						if (!node.my_tags.count(key))
 						{
-							auto &dst_values = node.total_tags[key];
+							auto &dst_values = node.all_tags[key];
 							for (const auto &value: src_values)
 							{
 								const auto p = dst_values.emplace(value);
 								if (p.second)
 								{
-									for (const auto &incl_fp: node.all_dependencies)
+									for (const auto &incl_fp: node.my_includes)
 									{
 										auto it = fp__file_.find(incl_fp);
 										if (it != fp__file_.end())
 										{
 											auto &file = it->second;
-											const auto p = file.root.total_tags[key].emplace(value);
+											const auto p = file.root.all_tags[key].emplace(value);
 											if (p.second)
 												dirty = true;
 										}
@@ -328,13 +336,15 @@ namespace dpn {
 		return it->second;
 	}
 
-	void Library::print_debug(std::ostream &os) const
+	void Library::print_debug(std::ostream &os, const Filter &filter) const
 	{
 		for (const auto &[fp,file]: fp__file_)
 		{
 			os << std::endl;
 			os << "File " << fp << std::endl;
 			auto print_node = [&](const auto &node, const auto &path){
+				if (!filter(node))
+					return;
 				os << std::string(path.size(), ' ');
 				for (const auto &meta: node.metas)
 				{
@@ -357,7 +367,18 @@ namespace dpn {
 				}
 				os << " my:" << node.my_effort << " total:" << node.total_effort << " filtered:" << node.filtered_effort;
 				for (const auto &[key,value]: node.my_tags)
-					os << " " << key << ":" << value;
+					os << " my: " << key << ":" << value;
+				if (!node.all_tags.empty())
+				{
+					os << " all:";
+					for (const auto &[key,set]: node.all_tags)
+					{
+						os << " " << key;
+						for (const auto &value: set)
+							os << '|' << value;
+					}
+				}
+
 				if (node.my_state)
 					os << " my: " << *node.my_state;
 				if (node.agg_state)
@@ -830,11 +851,15 @@ namespace dpn {
 			base = context_fp.parent_path() / incl;
 		base = base.lexically_normal();
 
+		unsigned int push_count = 0;
 		auto push_fp = [&](const auto &fp){
 			if (std::filesystem::is_regular_file(fp))
 			{
 				if (fp != context_fp)
+				{
 					fps.push_back(fp);
+					++push_count;
+				}
 			}
 			return true;
 		};
@@ -876,6 +901,8 @@ namespace dpn {
 				// Globbing was found
 				gubg::file::each_glob(rel.string(), push_fp, dir);
 		}
+
+		MSS(push_count > 0, log::error() << "Could not resolve '" << incl << "' from " << context_fp << std::endl);
 
 		MSS_END();
 	}

@@ -30,14 +30,24 @@ namespace dpn {
 		return str;
 	}
 
-	bool Node::has_matching_tags(const Tags &wanted_tags) const
+	bool Node::has_matching_tags(const TagSets &wanted_tags, bool on_empty) const
 	{
-		for (const auto &[key,value]: wanted_tags)
+		if (wanted_tags.empty())
+			return on_empty;
+		for (const auto &[key,wanted_values]: wanted_tags)
 		{
-			const auto it = total_tags.find(key);
-			if (it == total_tags.end())
+			const auto it = all_tags.find(key);
+			if (it == all_tags.end())
 				return false;
-			if (!it->second.count(value))
+
+			bool found_match = false;
+			for (const auto &value: wanted_values)
+			{
+				if (it->second.count(value))
+					// If one of the values for a given key matches, we have a match
+					found_match = true;
+			}
+			if (!found_match)
 				return false;
 		}
 		return true;

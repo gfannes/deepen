@@ -94,15 +94,45 @@ namespace dpn {
                             || set_sort_if("due", Sort::DueDate)
                             , log::error() << "Unknown sort type '" << tmp << "'" << std::endl);
                     }
-                    else if (is("-t", "--tag"))
+                    else if (is("-t", "--incl_tag"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
                         tags_.push_back(tmp);
-                        const auto ix = tmp.find(':');
-                        if (ix == std::string::npos)
-                            tags[tmp] = "";
-                        else
-                            tags[tmp.substr(0, ix)] = tmp.substr(ix+1);
+
+                        std::string key, value;
+                        {
+                            const auto ix = tmp.find(':');
+                            if (ix == std::string::npos)
+                            {
+                                key = tmp;
+                            }
+                            else
+                            {
+                                key = tmp.substr(0, ix);
+                                value = tmp.substr(ix+1);
+                            }
+                        }
+
+                        incl_tags[key].insert(value);
+                    }
+                    else if (is("-T", "--excl_tag"))
+                    {
+                        MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
+                        std::string key, value;
+                        {
+                            const auto ix = tmp.find(':');
+                            if (ix == std::string::npos)
+                            {
+                                key = tmp;
+                            }
+                            else
+                            {
+                                key = tmp.substr(0, ix);
+                                value = tmp.substr(ix+1);
+                            }
+                        }
+
+                        excl_tags[key].insert(value);
                     }
                     else if (is("-d", "--details"))
                     {
@@ -220,7 +250,8 @@ namespace dpn {
         option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
         option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
-        option("-t", "--tag", "<STRING>:<STRING>", "Add key-value tag");
+        option("-t", "--incl_tag", "<STRING>:<STRING>", "Include key-value tag, all keys should match (AND), one value per key is enough (OR)");
+        option("-T", "--excl_tag", "<STRING>:<STRING>", "Exclude key-value tag, all keys should match (AND), one value per key is enough (OR)");
         option("-m", "--moscow", "[mscw]+", "Moscow priorities to use");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");

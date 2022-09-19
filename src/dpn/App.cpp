@@ -89,7 +89,7 @@ namespace dpn {
 
         List nodes;
         Id__DepIds id__dep_ids;
-        const Library::Filter filter = {.tags = options_.tags, };
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
         MSS(library_.get_nodes_links(nodes, id__dep_ids, filter), log::error() << "Could not get nodes and links" << std::endl);
 
         if (options_.output_filepath)
@@ -294,7 +294,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        const Library::Filter filter = {.tags = options_.tags, .status = status, .moscow = options_.moscow};
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .status = status, .moscow = options_.moscow};
         MSS(library_.get(list, filter));
 
         MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
@@ -311,7 +311,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_due(list, filter));
@@ -330,12 +330,12 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_features(list, filter));
 
-        MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
+        MSS(show_items_(list, options_.sort.value_or(Sort::No), options_.reverse, filter));
 
         if (options_.output_filepath)
         {
@@ -368,35 +368,12 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.tags = options_.tags, .moscow = options_.moscow};
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_todo(list, filter));
 
         MSS(show_items_(list, options_.sort.value_or(Sort::No), options_.reverse, filter));
-
-        // Path prev_path;
-
-        // std::cout << termcolor::colorize;
-        // std::set<const Node *> visited_nodes;
-        // meta::Effort total_effort;
-        // auto print = [&](const auto &node, const auto &path){
-        //     if (node.has_matching_tags(options_.tags))
-        //     {
-        //         if (visited_nodes.count(&node) == 0)
-        //         {
-        //             visited_nodes.insert(&node);
-
-        //             if (node.my_effort.todo() > 0)
-        //             {
-        //                 total_effort += node.my_effort;
-        //                 std::cout << termcolor::yellow << to_string(path) << '/' << termcolor::green << node.text << ' ' << termcolor::blue << node.filtered_effort << termcolor::reset << std::endl;
-        //             }
-        //         }
-        //     }
-        // };
-        // library_.each_node(print, Direction::Push);
-        // std::cout << "TOTAL: " << termcolor::blue << total_effort << termcolor::reset << std::endl;
         
         MSS_END();
     }
@@ -407,7 +384,9 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        library_.print_debug(std::cout);
+        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+
+        library_.print_debug(std::cout, filter);
 
         MSS_END();
     }
@@ -423,7 +402,7 @@ namespace dpn {
         std::map<KV, std::set<std::filesystem::path>> kv__fps;
         library_.each_file([&](const auto &file){
             auto collect = [&](const auto &node, const auto &path){
-                if (node.has_matching_tags(options_.tags))
+                if (node.has_matching_tags(options_.incl_tags, true) && !node.has_matching_tags(options_.excl_tags, false))
                 {
                     for (const auto &kv: node.my_tags)
                     {

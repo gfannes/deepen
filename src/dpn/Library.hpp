@@ -23,7 +23,8 @@ namespace dpn {
 	public:
 		struct Filter
 		{
-			Tags tags;
+			TagSets incl_tags;
+			TagSets excl_tags;
 			std::optional<meta::Status> status;
 			std::optional<meta::Moscow> moscow;
 
@@ -40,7 +41,7 @@ namespace dpn {
 
 		std::optional<std::filesystem::path> get_fp(const Node &) const;
 
-		void print_debug(std::ostream &) const;
+		void print_debug(std::ostream &, const Filter &) const;
 
 		bool get(List &, const Filter &);
 		bool get_due(List &, const Filter &);

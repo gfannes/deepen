@@ -101,7 +101,7 @@ namespace dpn {
 				{
 					node.metas.push_back(*tag);
 					node.my_tags[tag->key] = tag->value;
-					node.total_tags[tag->key].insert(tag->value);
+					node.all_tags[tag->key].insert(tag->value);
 					continue;
 				}
 
