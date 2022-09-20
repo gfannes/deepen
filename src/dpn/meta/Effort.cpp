@@ -95,6 +95,14 @@ namespace dpn { namespace meta {
 		return *this;
 	}
 
+	bool Effort::operator==(const Effort &rhs) const
+	{
+		MSS_BEGIN(bool);
+		MSS_Q(total == rhs.total);
+		MSS_Q(done == rhs.done);
+		MSS_END();
+	}
+
 	bool parse(std::optional<Effort> &effort, gubg::Strange &strange)
 	{
 		MSS_BEGIN(bool);

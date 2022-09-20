@@ -180,7 +180,7 @@ namespace dpn {
             for (const auto ix: ixs)
             {
                 const auto &item = list.items[ix];
-                lambda(Item, ix, item.filtered_effort(), to_string(item.path), item.text(), item.fp.string());
+                lambda(Item, ix, item.filtered_effort(), item.node().my_effort, to_string(item.path), item.text(), item.fp.string());
                 if (options_.all_details || options_.details.count(ix))
                 {
                     auto show_details = [&](const auto &node, const auto &path){
@@ -190,19 +190,20 @@ namespace dpn {
                             return;
                         if (node.text.empty() && node.filtered_effort.total == 0)
                             return;
-                        lambda(path.size(), -1, node.filtered_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
+                        lambda(path.size(), -1, node.filtered_effort, node.my_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
                     library_.each_node(item.node(), show_details, Direction::Push);
                 }
             }
-            lambda(Total, list.items.size(), list.effort, "TOTAL", "", "");
+            lambda(Total, list.items.size(), list.effort, meta::Effort{}, "TOTAL", "", "");
         };
 
-        std::size_t max_ix_w = 0, max_effort_w = 0, max_path_w = 0, max_text_w = 0, max_fp_w = 0, max_path_text_w = 0;
-        auto update_max_w = [&](Level, int ix, const meta::Effort &effort, const std::string &text, const std::string &path, const std::string &fp){
+        std::size_t max_ix_w = 0, max_agg_effort_w = 0, max_my_todo_w = 0, max_path_w = 0, max_text_w = 0, max_fp_w = 0, max_path_text_w = 0;
+        auto update_max_w = [&](Level, int ix, const meta::Effort &agg_effort, const meta::Effort &my_effort, const std::string &text, const std::string &path, const std::string &fp){
             if (ix >= 0)
                 max_ix_w = std::max(max_ix_w, std::to_string(ix).size());
-            max_effort_w = std::max(max_effort_w, effort.str().size());
+            max_agg_effort_w = std::max(max_agg_effort_w, agg_effort.str().size());
+            max_my_todo_w = std::max(max_my_todo_w, meta::Effort::to_dsl(my_effort.todo()).size());
             const auto text_size = std::min<std::size_t>(text.size(), 150u);
             max_text_w = std::max(max_text_w, text_size);
             max_path_w = std::max(max_path_w, path.size());
@@ -211,7 +212,7 @@ namespace dpn {
         each_row(update_max_w);
 
         std::string prev_fp;
-        auto print_color = [&](Level level, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
+        auto print_color = [&](Level level, int ix, const meta::Effort &agg_effort, const meta::Effort &my_effort, const std::string &path, const std::string &text, const std::string &fp){
             auto ix_color = termcolor::white<char>;
             auto effort_color = termcolor::white<char>;
             auto path_color = termcolor::white<char>;
@@ -255,9 +256,16 @@ namespace dpn {
                 std::cout << "";
             std::cout << termcolor::reset;
 
-            std::cout << ' ' << effort_color << std::setw(max_effort_w) << std::left;
-            if (effort.total > 0)
-                std::cout << effort;
+            std::cout << ' ' << effort_color << std::setw(max_agg_effort_w) << std::left;
+            if (level > Item && (agg_effort.total == 0 || agg_effort == my_effort))
+                std::cout << "";
+            else
+                std::cout << agg_effort;
+            std::cout << termcolor::reset;
+
+            std::cout << ' ' << effort_color << std::setw(max_my_todo_w) << std::left;
+            if (my_effort.todo() > 0)
+                std::cout << meta::Effort::to_dsl(my_effort.todo());
             else
                 std::cout << "";
             std::cout << termcolor::reset;
@@ -270,8 +278,8 @@ namespace dpn {
             prev_fp = fp;
         };
 
-        auto print_tab = [&](Level, int ix, const meta::Effort &effort, const std::string &path, const std::string &text, const std::string &fp){
-            std::cout << ix << '\t' << effort << '\t' << path << '\t' << text << '\t' << fp << std::endl;
+        auto print_tab = [&](Level, int ix, const meta::Effort &agg_effort, const meta::Effort &my_effort, const std::string &path, const std::string &text, const std::string &fp){
+            std::cout << ix << '\t' << agg_effort << '\t' << my_effort << '\t' << path << '\t' << text << '\t' << fp << std::endl;
         };
 
         if (options_.color_output)

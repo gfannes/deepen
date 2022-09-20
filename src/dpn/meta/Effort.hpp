@@ -22,6 +22,7 @@ namespace dpn { namespace meta {
 		std::string str() const;
 
 		Effort &operator+=(const Effort &rhs);
+		bool operator==(const Effort &rhs) const;
 
 		void clear() {*this = Effort{};}
 
