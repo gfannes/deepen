@@ -1,6 +1,7 @@
 #include <dpn/App.hpp>
 #include <dpn/log.hpp>
 #include <dpn/input/from_file.hpp>
+#include <dpn/plan/Resources.hpp>
 
 #include <gubg/naft/Document.hpp>
 #include <gubg/std/filesystem.hpp>
@@ -84,6 +85,14 @@ namespace dpn {
     bool App::plan_()
     {
         MSS_BEGIN(bool);
+
+        plan::Resources resources;
+        if (options_.resources_fp)
+        {
+            const auto &fp = *options_.resources_fp;
+            MSS(resources.load_from_file(fp), log::error() << "Could not load resources from " << fp << std::endl);
+            std::cout << resources << std::endl;
+        }
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 

@@ -79,6 +79,7 @@ namespace dpn {
                     else if (is("-o", "--output"))          {MSS(argr.pop(output_filepath.emplace()), log::error() << "Expected an output filepath" << std::endl);}
                     else if (is("-k", "--color_output"))    {MSS(argr.pop(color_output),              log::error() << "Expected a boolean" << std::endl);}
                     else if (is("-r", "--reverse"))         {reverse = true;}
+                    else if (is("-R", "--resources"))       {MSS(argr.pop(resources_fp.emplace()),              log::error() << "Expected a resources filepath" << std::endl);}
                     else if (is("-s", "--sort"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a string" << std::endl);
@@ -249,6 +250,7 @@ namespace dpn {
         option("-o", "--output", "<FILEPATH>", "Set output filepath");
         option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
+        option("-R", "--resources", "<FILEPATH>", "Filepath to resources used for planning [optional]");
         option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
         option("-t", "--incl_tag", "<STRING>:<STRING>", "Include key-value tag, all keys should match (AND), one value per key is enough (OR)");
         option("-T", "--excl_tag", "<STRING>:<STRING>", "Exclude key-value tag, all keys should match (AND), one value per key is enough (OR)");

@@ -1,8 +1,6 @@
 #ifndef HEADER_dpn_config_Config_hpp_ALREADY_INCLUDED
 #define HEADER_dpn_config_Config_hpp_ALREADY_INCLUDED
 
-#include <gubg/std/filesystem.hpp>
-
 #include <string>
 #include <vector>
 #include <map>

@@ -42,6 +42,8 @@ namespace dpn {
         bool all_details = false;
         bool detailed_ = false;
 
+        std::optional<std::string> resources_fp;
+
         //Arguments
         std::list<std::string> arguments;
 

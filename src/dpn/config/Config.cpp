@@ -1,7 +1,8 @@
 #include <dpn/config/Config.hpp>
 #include <dpn/log.hpp>
 
-#include <gubg/naft/Range.hpp>
+#include <gubg/naft/Reader.hpp>
+#include <gubg/std/filesystem.hpp>
 #include <gubg/file/system.hpp>
 #include <gubg/mss.hpp>
 
@@ -17,44 +18,54 @@ namespace dpn { namespace config {
         std::string content;
         MSS(gubg::file::read(content, filepath), log::error() << "Could not read from config file `" << filepath << "`" << std::endl);
 
-        gubg::naft::Range range{content};
-        for (std::string tag; !range.empty() && range.pop_tag(tag); )
+        using Reader = gubg::naft::Reader;
+        Reader reader{content};
+
+        using Item = Reader::Item;
+        for (Item item; reader(item); )
         {
-            if (false) {}
-            else if (tag == "root")
+            switch (item.what)
             {
-                std::optional<std::string> path_opt;
-                std::optional<std::string> file_opt;
-                std::optional<std::string> name_opt;
-                for (std::string k,v; range.pop_attr(k,v); )
+                case Item::NodeOpen:
+                if (item.text == "root")
                 {
-                    if (false) {}
-                    else if (k == "path") path_opt = v;
-                    else if (k == "file") file_opt = v;
-                    else if (k == "name") name_opt = v;
-                    else MSS(false, log::error() << "Unknown attribute `" << k << ":" << v << "` for tag `" << tag << "` in `" << filepath << "`" << std::endl);
-                }
-
-                MSS(!!path_opt, log::error() << "Expected filepath to be set (attribute root.path)" << std::endl);
-                const auto &path = *path_opt;
-
-                paths.push_back(path);
-
-                if (file_opt)
-                {
-                    std::filesystem::path fp = *file_opt;
-                    if (!fp.is_absolute())
+                    std::optional<std::string> path_opt, file_opt, name_opt;
+                    for (; reader(item) && item.what == Item::Attribute; )
                     {
-                        fp = *path_opt;
-                        fp /= *file_opt;
+                        if (false) ;
+                        else if (item.key() == "path") path_opt = item.value();
+                        else if (item.key() == "file") file_opt = item.value();
+                        else if (item.key() == "name") name_opt = item.value();
+                        else MSS(false, log::error() << "Unknown attribute `" << item.key() << ":" << item.value() << "` for tag `" << item.text << "` in `" << filepath << "`" << std::endl);
                     }
-                    default_inputs.push_back(fp.string());
+                    MSS(item.what == Item::NodeClose);
+
+                    MSS(!!path_opt, log::error() << "Expected filepath to be set (attribute root.path)" << std::endl);
+                    const auto &path = *path_opt;
+
+                    if (file_opt)
+                    {
+                        std::filesystem::path fp = *file_opt;
+                        if (!fp.is_absolute())
+                        {
+                            fp = *path_opt;
+                            fp /= *file_opt;
+                        }
+                        default_inputs.push_back(fp.string());
+                    }
+                    if (name_opt)
+                        name__path[*name_opt] = path;
                 }
-                if (name_opt)
-                    name__path[*name_opt] = path;
+                else
+                    MSS(false, log::error() << "Unknown config tag `" << item.text << "` in `" << filepath << "`" << std::endl);
+                break;
+
+                default:
+                MSS(false);
+                break;
             }
-            else MSS(false, log::error() << "Unknown config tag `" << tag << "` in `" << filepath << "`" << std::endl);
         }
+        MSS(!reader.error, log::error() << "Could not read configuration file from " << filepath << ": " << *reader.error << std::endl);
 
         MSS_END();
     }
