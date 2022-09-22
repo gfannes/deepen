@@ -7,7 +7,7 @@
 
 namespace dpn { namespace read { 
 
-	bool markdown(Nodes &, const std::string &);
+	bool markdown(Node &, const std::string &);
 	bool freemind(Nodes &, const std::string &);
 
 } } 

@@ -70,13 +70,13 @@ namespace dpn { namespace metadata {
             if (line.pop_if("(/)"))
             {
                 items.emplace_back(Item::User, "", "V");
-                line.ltrim(' ');
+                line.strip_left(' ');
                 return true;
             }
             if (line.pop_if("(x)"))
             {
                 is_blocked = true;
-                line.ltrim(' ');
+                line.strip_left(' ');
                 return true;
             }
             return false;
@@ -91,7 +91,7 @@ namespace dpn { namespace metadata {
             while (item.parse(line))
             {
                 items.push_back(item);
-                line.ltrim(' ');
+                line.strip_left(' ');
             }
             if (is_blocked)
             {

@@ -14,8 +14,8 @@ namespace dpn {
 
 		switch (format)
 		{
-			case Format::Markdown: MSS(read::markdown(root.childs, str)); break;
-			case Format::Naft: MSS(read::naft(root.childs, str)); break;
+			case Format::Markdown: MSS(read::markdown(root, str)); break;
+			case Format::Naft: MSS(read::naft(root, str)); break;
 			case Format::Freemind: MSS(read::freemind(root.childs, str)); break;
 
 			default: MSS(false, log::error() << "Format " << format << " not supported" << std::endl); break;
@@ -32,7 +32,7 @@ namespace dpn {
 		auto interpret = [&](auto &node, auto &path){
 			// Parse as many meta items as possible and insert into node.metas and some node.my_ fields
 			std::string text;
-			for (gubg::Strange strange{node.text}; (strange.strip(' '), !strange.empty()); )
+			for (gubg::Strange strange{node.text}; (strange.strip_left(' '), !strange.empty()); )
 			{
 				std::optional<meta::State> state;
 				AGG(ok, meta::parse(state, strange), return);

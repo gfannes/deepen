@@ -116,21 +116,30 @@ namespace dpn {
 
 			if (!node.my_includes.empty())
 			{
+				if (direction == Direction::PushWithDeps)
+					ftor(node, path);
 				for (const auto &dep_fp: node.my_includes)
 				{
 					const auto it = fp__file_.find(dep_fp);
 					if (it != fp__file_.end())
 					{
 						const auto &file = it->second;
-						// We do not iterate file.root since that is an artificial node
-						for (const auto &child: file.root.childs)
-							each_node_(child, path, ftor, direction);
+						if (!file.root.childs.empty())
+						{
+							path.push_back(&node);
+							// We do not iterate file.root since that is an artificial node
+							for (const auto &child: file.root.childs)
+								each_node_(child, path, ftor, direction);
+							path.pop_back();
+						}
 					}
 				}
+				if (direction == Direction::PullWithDeps)
+					ftor(node, path);
 			}
 			else
 			{
-				if (direction == Direction::Push)
+				if (direction == Direction::Push || direction == Direction::PushWithDeps)
 					ftor(node, path);
 				if (!node.childs.empty())
 				{
@@ -139,7 +148,7 @@ namespace dpn {
 						each_node_(child, path, ftor, direction);
 					path.pop_back();
 				}
-				if (direction == Direction::Pull)
+				if (direction == Direction::Pull || direction == Direction::PullWithDeps)
 					ftor(node, path);
 			}
 		}
@@ -155,21 +164,30 @@ namespace dpn {
 
 			if (!node.my_includes.empty())
 			{
+				if (direction == Direction::PushWithDeps)
+					ftor(node, path);
 				for (const auto &dep_fp: node.my_includes)
 				{
 					const auto it = fp__file_.find(dep_fp);
 					if (it != fp__file_.end())
 					{
 						auto &file = it->second;
-						// We do not iterate file.root since that is an artificial node
-						for (auto &child: file.root.childs)
-							each_node_(child, path, ftor, direction);
+						if (!file.root.childs.empty())
+						{
+							path.push_back(&node);
+							// We do not iterate file.root since that is an artificial node
+							for (auto &child: file.root.childs)
+								each_node_(child, path, ftor, direction);
+							path.pop_back();
+						}
 					}
 				}
+				if (direction == Direction::PullWithDeps)
+					ftor(node, path);
 			}
 			else
 			{
-				if (direction == Direction::Push)
+				if (direction == Direction::Push || direction == Direction::PushWithDeps)
 					ftor(node, path);
 				if (!node.childs.empty())
 				{
@@ -178,7 +196,7 @@ namespace dpn {
 						each_node_(child, path, ftor, direction);
 					path.pop_back();
 				}
-				if (direction == Direction::Pull)
+				if (direction == Direction::Pull || direction == Direction::PullWithDeps)
 					ftor(node, path);
 			}
 		}

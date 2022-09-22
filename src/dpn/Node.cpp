@@ -66,4 +66,26 @@ namespace dpn {
 		return str;
 	}
 
+	std::ostream &operator<<(std::ostream &os, const Node &node)
+	{
+		os << "[Node](text:" << node.text << "){\n";
+		if (!node.all_tags.empty())
+		{
+			os << "  [all_tags]{\n";
+			for (const auto &[key,values]: node.all_tags)
+			{
+				if (!values.empty())
+				{
+					os << "    [" << key << "]";
+					for (const auto &value: values)
+						os << "(" << value << ")";
+					os << "\n";
+				}
+			}
+			os << "  }\n";
+		}
+		os << "}\n";
+		return os;
+	}
+
 } 

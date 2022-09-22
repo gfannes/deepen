@@ -19,7 +19,7 @@ namespace dpn { namespace meta {
 			auto pop_args = [&](){
 				for (gubg::Strange arg; substr.pop_until(arg, ',') || substr.pop_all(arg); )
 				{
-					arg.strip(' ');
+					arg.strip_left(' ');
 					command->arguments.push_back(arg.str());
 				}
 				return true;

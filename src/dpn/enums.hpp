@@ -18,7 +18,7 @@ namespace dpn {
 
     enum class Direction
     {
-        Push, Pull
+        Push, Pull, PushWithDeps, PullWithDeps,
     };
 
     enum class Sort

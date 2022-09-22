@@ -7,7 +7,7 @@
 
 namespace dpn { namespace read { 
 
-	bool naft(Nodes &, const std::string &);
+	bool naft(Node &, const std::string &);
 
 } } 
 

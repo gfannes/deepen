@@ -19,6 +19,7 @@
 #include <set>
 #include <map>
 #include <variant>
+#include <ostream>
 
 namespace dpn { 
 
@@ -69,6 +70,24 @@ namespace dpn {
 		
 		std::set<std::filesystem::path> all_dependencies;
 
+		template <typename Ftor>
+		void each_dependency(Ftor &&ftor, bool all) const
+		{
+			if (all)
+			{
+				for (const auto &fp: all_dependencies)
+					ftor(fp);
+			}
+			else
+			{
+				for (const auto &set: {my_includes, my_requires})
+				{
+					for (const auto &fp: set)
+						ftor(fp);
+				}
+			}
+		}
+
 		Tags my_tags;
 		TagSets all_tags;
 
@@ -96,6 +115,8 @@ namespace dpn {
 	using Nodes = std::vector<Node>;
 
 	std::string to_string(const Path &, char sep = '/');
+
+	std::ostream &operator<<(std::ostream &, const Node &);
 
 } 
 

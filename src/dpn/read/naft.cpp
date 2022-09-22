@@ -3,22 +3,28 @@
 
 #include <gubg/naft/Reader.hpp>
 #include <gubg/mss.hpp>
+#include <gubg/OnlyOnce.hpp>
+#include <gubg/string_algo/algo.hpp>
 
 #include <vector>
 
 namespace dpn { namespace read { 
 
-	bool naft(Nodes &nodes, const std::string &text)
+	bool naft(Node &node, const std::string &text)
 	{
 		MSS_BEGIN(bool);
 
 		using Reader = gubg::naft::Reader;
 
-		std::vector<Nodes *> nodes_stack;
-		nodes_stack.push_back(&nodes);
+		std::vector<Node *> node_stack;
+		node_stack.push_back(&node);
+		auto create_child = [&]() -> Node& {
+			return node_stack.back()->childs.emplace_back();
+		};
 
 		Reader reader{text};
 
+		gubg::OnlyOnce check_for_root_metadata;
 		for (Reader::Item item; reader(item); )
 		{
 			L(item);
@@ -26,29 +32,32 @@ namespace dpn { namespace read {
 			{
 				case Reader::Item::NodeOpen:
 				{
-					auto &node = nodes_stack.back()->emplace_back();
+					auto &node = create_child();
 					node.text = item.text;
-					node.depth = nodes_stack.size();
-					nodes_stack.push_back(&node.childs);
+					node.depth = node_stack.size();
+					node_stack.push_back(&node);
 				}
 				break;
 
 				case Reader::Item::NodeClose:
 				{
-					nodes_stack.pop_back();
+					node_stack.pop_back();
 				}
 				break;
 
 				case Reader::Item::Attribute:
 				{
-					auto &node = nodes_stack.back()->emplace_back();
+					auto &node = create_child();
 					node.attributes.emplace_back(item.key(), item.value());
 				}
 				break;
 
 				case Reader::Item::Text:
 				{
-					auto &node = nodes_stack.back()->emplace_back();
+					auto &node = (check_for_root_metadata()
+						? *node_stack.back()
+						: create_child());
+					gubg::string_algo::strip_right(item.text, " \t\n\r");
 					node.text = item.text;
 				}
 				break;

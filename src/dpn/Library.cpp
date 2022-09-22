@@ -450,13 +450,25 @@ namespace dpn {
 		auto lambda = [&](const auto &node, const auto &path){
 			if (!filter(node))
 				return;
+
 			if (node.my_urgency && node.my_urgency->is_public)
 			{
 				auto &item = list.items.emplace_back(node);
 				item.path = path;
 			}
+
+			auto detect_excluded_dependencies = [&](const auto &fp){
+				auto it = fp__file_.find(fp);
+				if (it != fp__file_.end())
+				{
+					const auto &root = it->second.root;
+					if (!filter(root))
+						std::cout << "Found dropped dependency from " << node.path(path) << " on " << root.text << std::endl;
+				}
+			};
+			node.each_dependency(detect_excluded_dependencies, false);
 		};
-		each_node(lambda, Direction::Push);
+		each_node(lambda, Direction::PushWithDeps);
 
 		set_fps_(list);
 		compute_effort_(list, filter);
