@@ -3,6 +3,7 @@
 
 #include <gubg/file/system.hpp>
 #include <gubg/xml/Writer.hpp>
+#include <gubg/xml/Escaper.hpp>
 #include <gubg/map.hpp>
 #include <gubg/hr.hpp>
 #include <gubg/mss.hpp>
@@ -95,6 +96,7 @@ namespace dpn {
 				for (const auto &fp: fps_todo)
 				{
 					auto &file = fp__file_[fp];
+					file.root.type = Node::Type::Root;
 
 					MSS(file.interpret(), log::error() << "Could not interpret " << fp << std::endl);
 
@@ -109,6 +111,24 @@ namespace dpn {
 							{
 								if (const auto t = command->type; t == meta::Command::Include || t == meta::Command::Require)
 								{
+									switch (t)
+									{
+										case meta::Command::Include:
+										node.type = Node::Type::Link;
+										if (!node.text.empty())
+											log::warning() << "Found text in dependency node of " << fp << std::endl;
+										node.text = "[include]";
+										break;
+
+										case meta::Command::Require:
+										node.type = Node::Type::Link;
+										if (!node.text.empty())
+											log::warning() << "Found text in dependency node of " << fp << std::endl;
+										node.text = "[require]";
+										break;
+
+										default: break;
+									}
 									for (const auto &dep: command->arguments)
 									{
 										std::vector<std::filesystem::path> dep_fps;
@@ -132,23 +152,16 @@ namespace dpn {
 														log::error() << "File " << dep_fp << " is already included from " << p.first->second << ", cannot include it again from " << fp << std::endl;
 													}
 													node.my_includes.insert(dep_fp);
-
-													if (!node.text.empty())
-														log::warning() << "Found text in dependency node of " << fp << std::endl;
-													node.text = "[include]("+dep_fp.string()+")";
 												}
 												break;
 
 												case meta::Command::Require:
 												node.my_requires.insert(dep_fp);
-													
-												if (!node.text.empty())
-													log::warning() << "Found text in dependency node of " << fp << std::endl;
-												node.text = "[require]("+dep_fp.string()+")";
 												break;
 
 												default: break;
 											}
+											node.text += "("+dep_fp.string()+")";
 											node.all_dependencies.insert(dep_fp);
 
 											if (node.my_urgency)
@@ -266,8 +279,11 @@ namespace dpn {
 						return;
 					const auto &parent = *path.back();
 
-					for (const auto &[key,src_values]: parent.all_tags)
+					for (auto p: parent.all_tags)
 					{
+						const auto &key = p.first;
+						const auto &src_values = p.second;
+
 						if (node.my_tags.count(key))
 							// If the key occurs in my_tags, we do not merge the parent values for this key
 							break;
@@ -892,11 +908,43 @@ namespace dpn {
 	// .? Prune branches without effort
 	bool Library::export_msproj2(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const std::filesystem::path &output_fp) const
 	{
-		MSS_BEGIN(bool, "");
+		MSS_BEGIN(bool);
 		L(C(gubg::hr(nodes.items)));
 		L(C(gubg::hr(part_of)));
 		L(C(gubg::hr(after)));
 		L(C(gubg::hr(requires)));
+
+		bool include_roots = false;
+
+		if (!include_roots)
+		{
+			std::map<const Node *, Id> node__id;
+			for (Id id = 0u; id < nodes.items.size(); ++id)
+			{
+				const auto &node = nodes.items[id].node();
+				node__id[&node] = id;
+			}
+
+			for (Id id = 0u; id < nodes.items.size(); ++id)
+			{
+				const auto &node = nodes.items[id].node();
+				// gubg::with_value(after, id, [&](auto aid){
+				// 	if (nodes.items[aid].node().type == Node::Type::Link)
+				// 		gubg::with_value(after, aid, [&](auto aaid){after[id] = aaid;});
+				// });
+				if (node.type == Node::Type::Link)
+					gubg::with_value(requires, id, [&](auto &deps){
+						Deps new_deps;
+						for (auto did: deps)
+						{
+							const auto &dnode = nodes.items[did].node();
+							for (const auto &child: dnode.childs)
+								new_deps.insert(node__id[&child]);
+						}
+						deps.swap(new_deps);
+					});
+			}
+		}
 
 		const auto folder = output_fp.parent_path();
 		if (!folder.empty())
@@ -914,27 +962,38 @@ namespace dpn {
 		project.attr("xmlns", "http://schemas.microsoft.com/project");
 		auto tasks = project.tag("Tasks");
 
-		auto add_task = [&](Id id, const auto &text, unsigned int depth, std::optional<unsigned int> minutes){
-			S("");
-			L(C(id)C(text)C(depth));
+		gubg::xml::Escaper escaper;
+
+		auto add_task = [&](Id id, const auto &text, unsigned int depth, std::optional<unsigned int> minutes_opt){
 			auto task = tasks.tag("Task");
 			task.tag("UID") << id;
-			task.tag("Name") << (!text.empty() ? text : "[empty]");
-			task.tag("OutlineLevel") << depth;
-			if (minutes)
+
+			const auto &text_esc = escaper.escape(text);
+			task.tag("Name") << (!text_esc.empty() ? text_esc : "[empty]");
+
+			// Merlin Project does not accept nodes with OutlineLevel == 0, hence the +1
+			task.tag("OutlineLevel") << depth+1;
+			if (minutes_opt)
 			{
+				auto minutes = *minutes_opt;
 				task.tag("DurationFormat") << 53;
 				{
-					const std::string pt = std::string("PT0H")+std::to_string(*minutes)+"M0S";
+					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
 					task.tag("Duration") << pt;
 					task.tag("Work") << pt;
 				}
+				if (minutes == 0)
+					task.tag("Milestone") << 1;
 			}
-			gubg::with_value(part_of, id, [&](auto oid){
-				auto predecessor_link = task.tag("PredecessorLink");
-				predecessor_link.tag("PredecessorUID") << oid;
-				predecessor_link.tag("Type") << 3;
-			});
+			if (false)
+			{
+				// This creates invalid loops for Merlin Project
+				gubg::with_value(part_of, id, [&](auto oid){
+					auto predecessor_link = task.tag("PredecessorLink");
+					predecessor_link.tag("PredecessorUID") << oid;
+					predecessor_link.tag("Type") << 3;
+				});
+			}
 			gubg::with_value(after, id, [&](auto oid){
 				auto predecessor_link = task.tag("PredecessorLink");
 				predecessor_link.tag("PredecessorUID") << oid;
@@ -950,9 +1009,9 @@ namespace dpn {
 			});
 		};
 
+		Id self_id = nodes.items.size();
 		for (Id id = 0u; id < nodes.items.size(); ++id)
 		{
-			S("");
 			const auto &item = nodes.items[id];
 			const auto &node = item.node();
 			L(node);
@@ -961,34 +1020,64 @@ namespace dpn {
 				return node.childs.empty() && node.my_includes.empty() && node.my_requires.empty();
 			};
 
-			if (is_leaf())
+			switch (node.type)
 			{
-				const auto todo = node.my_effort.todo();
-				if (todo == 0)
-					L("This leaf node has no my_effort");
-				else
-					add_task(id, node.text, node.depth(), todo*15);
-			}
-			else
-			{
-				const auto my_todo = node.my_effort.todo();
-				const auto filtered_todo = node.filtered_effort.todo();
-				if (filtered_todo == 0)
-					L("This non-leaf node has no filtered_effort");
+				case Node::Type::Root: break;
+
+				case Node::Type::Link:
+				{
+					auto name = [&](std::string str, const auto &fps){
+						for (const auto &fp: fps)
+							gubg::with_value(fp__file_, fp, [&](const auto &file){
+								const auto &childs = file.root.childs;
+								if (childs.empty())
+									str += " "+fp.filename().string();
+									else
+									str += " "+childs.front().text;
+							});
+						return str;
+					};
+					if (!node.my_includes.empty())
+					{
+						const auto filtered_todo = node.filtered_effort.todo();
+						if (filtered_todo > 0)
+							add_task(id, name("=>", node.my_includes), node.depth(include_roots), std::nullopt);
+					}
+					if (!node.my_requires.empty())
+						add_task(id, name("->", node.my_requires), node.depth(include_roots), 0);
+				}
+				break;
+
+				case Node::Type::Normal:
+				if (is_leaf())
+				{
+					const auto todo = node.my_effort.todo();
+					if (todo == 0)
+						L("This leaf node has no my_effort");
+					else
+						add_task(id, node.text, node.depth(include_roots), todo*15);
+				}
 				else
 				{
-					if (!node.my_requires.empty())
-					{
-						add_task(id, node.text, node.depth(), 0);
-					}
-					else if (my_todo == filtered_todo)
-					{
-						// All effort is with me, child nodes without effort won't be added
-						add_task(id, node.text, node.depth(), my_todo*15);
-					}
+					const auto my_todo = node.my_effort.todo();
+					const auto filtered_todo = node.filtered_effort.todo();
+					if (filtered_todo == 0)
+						L("This non-leaf node has no filtered_effort");
 					else
-						add_task(id, node.text, node.depth(), std::nullopt);
+					{
+						if (my_todo == filtered_todo)
+							// All effort is with me, child nodes without effort won't be added
+							add_task(id, node.text, node.depth(include_roots), my_todo*15);
+						else if (my_todo > 0)
+						{
+							add_task(id, node.text, node.depth(include_roots), std::nullopt);
+							add_task(self_id++, "[self]", node.depth(include_roots)+1, my_todo*15);
+						}
+						else
+							add_task(id, node.text, node.depth(include_roots), std::nullopt);
+					}
 				}
+				break;
 			}
 		}
 
@@ -1070,7 +1159,7 @@ namespace dpn {
 		for (auto &item: list.items)
 		{
 			if (auto fp_opt = get_fp(item.node()); !!fp_opt)
-				item.fp = *fp_opt;
+			item.fp = *fp_opt;
 		}
 	}
 

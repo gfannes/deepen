@@ -34,10 +34,13 @@ namespace dpn {
 	class Node
 	{
 	public:
+		enum class Type {Normal, Root, Link};
+
 		Node() {}
 		Node(const std::string &text): text(text) {}
 
 		const Node *parent = nullptr;
+		Type type = Type::Normal;
 
 		std::string text;
 		unsigned int level = 0;
@@ -108,7 +111,7 @@ namespace dpn {
 		Tags my_tags;
 		TagSets all_tags;
 
-		unsigned int depth() const {return !!parent ? parent->depth()+1 : 0;}
+		unsigned int depth(bool include_roots) const;
 
 		std::string path(const Path &, char sep = '/') const;
 

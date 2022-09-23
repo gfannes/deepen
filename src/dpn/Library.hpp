@@ -148,11 +148,9 @@ namespace dpn {
 					}
 					else if (!file.root.childs.empty())
 					{
-						path.push_back(&node);
 						// We do not iterate file.root since that is an artificial node
 						for (const auto &child: file.root.childs)
 							each_node_(child, path, ftor, tread);
-						path.pop_back();
 					}
 				}
 
@@ -210,11 +208,9 @@ namespace dpn {
 					}
 					else if (!file.root.childs.empty())
 					{
-						path.push_back(&node);
 						// We do not iterate file.root since that is an artificial node
 						for (auto &child: file.root.childs)
 							each_node_(child, path, ftor, tread);
-						path.pop_back();
 					}
 				}
 

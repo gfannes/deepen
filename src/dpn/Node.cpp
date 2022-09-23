@@ -15,6 +15,17 @@ namespace dpn {
 		return res;
 	}
 
+	unsigned int Node::depth(bool include_roots) const
+	{
+		if (!parent)
+			return 0;
+
+		if (!include_roots && type == Type::Root)
+			return parent->depth(include_roots);
+
+		return parent->depth(include_roots)+1;
+	}
+
 	std::string Node::path(const Path &path, char sep) const
 	{
 		std::string str;
@@ -72,7 +83,7 @@ namespace dpn {
 		gubg::naft::Document doc{os};
 		auto n = doc.node("Node");
 		n.attr("text", node.text);
-		n.attr("depth", node.depth());
+		n.attr("depth", node.depth(true));
 		n.attr("parent", node.parent);
 		return os;
 	}

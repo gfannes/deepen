@@ -190,7 +190,7 @@ namespace dpn {
                 switch (level)
                 {
                     case 1: path_color = termcolor::color<250, 250, 0, char>; break;
-                    case 2: path_color = termcolor::color<200, 150, 30, char>; break;
+                    case 2: path_color = termcolor::color<200, 150, 0, char>; break;
                     case 3: path_color = termcolor::color<160, 50, 60, char>; break;
                     case 4: path_color = termcolor::color<130, 0, 90, char>; break;
                     default: path_color = termcolor::color<100, 0, 120, char>; break;
@@ -219,7 +219,7 @@ namespace dpn {
                 std::cout << "";
             std::cout << termcolor::reset;
 
-            std::cout << ' ' << path_color                                                         << path << termcolor::reset;
+            std::cout << ' ' << path_color                                                        << path << termcolor::reset;
             std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::left << text << termcolor::reset;
             std::cout << ' ' << fp_color   << std::setw(max_fp_w)                    << std::left << (fp != prev_fp ? fp : "") << termcolor::reset;
             std::cout << std::endl;
