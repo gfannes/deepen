@@ -141,7 +141,7 @@ namespace dpn {
                             return;
                         lambda(path.size(), -1, node.filtered_effort, node.my_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
-                    library_.each_node(item.node(), show_details, Direction::Push);
+                    library_.each_node(item.node(), show_details, Tread{.dependency = Dependency::Mine});
                 }
             }
             lambda(Total, list.items.size(), list.effort, meta::Effort{}, "TOTAL", "", "");
@@ -302,12 +302,14 @@ namespace dpn {
                 MSS(library_.export_mindmap("Features", list, filter, fp));
             if (ext == ".xml")
             {
-                if (false)
+                if (true)
                 {
-                    List list;
-                    Id__DepIds id__dep_ids;
-                    MSS(library_.get_nodes_links(list, id__dep_ids, filter), log::error() << "Could not get nodes and links" << std::endl);
-                    MSS(library_.export_msproj2(list, id__dep_ids, fp));
+                    List nodes;
+                    Id__Id part_of, after;
+                    Id__DepIds requires;
+                    const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
+                    MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
+                    MSS(library_.export_msproj2(nodes, part_of, after, requires, fp));
                 }
                 else
                 {

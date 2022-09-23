@@ -34,14 +34,14 @@ namespace dpn { namespace read {
 					{
 						auto &node = *node_stack.back();
 						node.text = item.text;
-						node.depth = item.level;
+						node.level = item.level;
 						node_stack.push_back(&node);
 					}
 					else
 					{
 						auto &node = node_stack.back()->childs.emplace_back();
 						node.text = item.text;
-						node.depth = item.level;
+						node.level = item.level;
 						node.is_heading = (item.what == Reader::Item::HeadingOpen);
 						node_stack.push_back(&node);
 					}

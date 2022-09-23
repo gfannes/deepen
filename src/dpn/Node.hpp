@@ -1,6 +1,7 @@
 #ifndef HEADER_dpn_Node_hpp_ALREADY_INCLUDED
 #define HEADER_dpn_Node_hpp_ALREADY_INCLUDED
 
+#include <dpn/enums.hpp>
 #include <dpn/Attribute.hpp>
 #include <dpn/meta/State.hpp>
 #include <dpn/meta/Moscow.hpp>
@@ -36,8 +37,10 @@ namespace dpn {
 		Node() {}
 		Node(const std::string &text): text(text) {}
 
+		const Node *parent = nullptr;
+
 		std::string text;
-		unsigned int depth = 0;
+		unsigned int level = 0;
 		bool is_heading = false;
 		Attributes attributes;
 
@@ -71,25 +74,41 @@ namespace dpn {
 		std::set<std::filesystem::path> all_dependencies;
 
 		template <typename Ftor>
-		void each_dependency(Ftor &&ftor, bool all) const
+		void each_dependency(Ftor &&ftor, Dependency dep) const
 		{
-			if (all)
+			switch (dep)
 			{
-				for (const auto &fp: all_dependencies)
+				case Dependency::None: break;
+
+				case Dependency::Include:
+				for (const auto &fp: my_includes)
 					ftor(fp);
-			}
-			else
-			{
+				break;
+
+				case Dependency::Require:
+				for (const auto &fp: my_includes)
+					ftor(fp);
+				break;
+
+				case Dependency::Mine:
 				for (const auto &set: {my_includes, my_requires})
 				{
 					for (const auto &fp: set)
 						ftor(fp);
 				}
+				break;
+
+				case Dependency::All:
+				for (const auto &fp: all_dependencies)
+					ftor(fp);
+				break;
 			}
 		}
 
 		Tags my_tags;
 		TagSets all_tags;
+
+		unsigned int depth() const {return !!parent ? parent->depth()+1 : 0;}
 
 		std::string path(const Path &, char sep = '/') const;
 

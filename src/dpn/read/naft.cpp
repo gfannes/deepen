@@ -34,7 +34,7 @@ namespace dpn { namespace read {
 				{
 					auto &node = create_child();
 					node.text = item.text;
-					node.depth = node_stack.size();
+					node.level = node_stack.size();
 					node_stack.push_back(&node);
 				}
 				break;

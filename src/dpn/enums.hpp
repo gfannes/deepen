@@ -21,6 +21,11 @@ namespace dpn {
         Push, Pull,
     };
 
+    enum class Dependency
+    {
+        None, Include, Require, Mine, All,
+    };
+
     enum class Sort
     {
         No, Effort, Urgency, Rice, DueDate,

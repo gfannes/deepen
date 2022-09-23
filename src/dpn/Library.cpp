@@ -3,6 +3,8 @@
 
 #include <gubg/file/system.hpp>
 #include <gubg/xml/Writer.hpp>
+#include <gubg/map.hpp>
+#include <gubg/hr.hpp>
 #include <gubg/mss.hpp>
 
 #include <optional>
@@ -130,19 +132,25 @@ namespace dpn {
 														log::error() << "File " << dep_fp << " is already included from " << p.first->second << ", cannot include it again from " << fp << std::endl;
 													}
 													node.my_includes.insert(dep_fp);
+
+													if (!node.text.empty())
+														log::warning() << "Found text in dependency node of " << fp << std::endl;
+													node.text = "[include]("+dep_fp.string()+")";
 												}
 												break;
 
 												case meta::Command::Require:
 												node.my_requires.insert(dep_fp);
+													
+												if (!node.text.empty())
+													log::warning() << "Found text in dependency node of " << fp << std::endl;
+												node.text = "[require]("+dep_fp.string()+")";
 												break;
 
 												default: break;
 											}
 											node.all_dependencies.insert(dep_fp);
 
-											if (!node.text.empty())
-												log::warning() << "Found text in dependency node of " << fp << std::endl;
 											if (node.my_urgency)
 												log::warning() << "Found urgency in dependency node of " << fp << std::endl;
 											if (!node.childs.empty())
@@ -222,13 +230,31 @@ namespace dpn {
 			file.each_node(complete_includes, Direction::Pull);
 		}
 
+		// Setup node.parent information based on within-file path and node.my_includes information
+		for (auto &[_,file]: fp__file_)
+		{
+			bool ok = true;
+			auto setup = [&](auto &node, auto &path){
+				if (!path.empty())
+					node.parent = path.back();
+
+				for (const auto &fp: node.my_includes)
+					gubg::with_value(fp__file_, fp, [&](auto &file){
+						AGG(ok, !file.root.parent, log::error() << "File " << fp << " already has a parent: " << *file.root.parent << std::endl);
+						file.root.parent = &node;
+					});
+			};
+			file.each_node(setup, Direction::Push);
+			MSS(ok);
+		}
+
 		// Push all tags for each file from root to leave and to the all_dependencies. Keep pushing until no new tags are set into a file.root
 		{
 			auto setup_all_tags = [](auto &node, const auto &_){
 				for (const auto &[key,value]: node.my_tags)
 					node.all_tags[key].insert(value);
 			};
-			each_node(setup_all_tags, Direction::Push);
+			each_node(setup_all_tags, Tread{.dependency = Dependency::Mine});
 		}
 		for (bool dirty = true; dirty; )
 		{
@@ -263,7 +289,7 @@ namespace dpn {
 											dirty = true;
 									}
 								};
-								node.each_dependency(push_to_dependency, false);
+								node.each_dependency(push_to_dependency, Dependency::Mine);
 							}
 						}
 					}
@@ -316,7 +342,7 @@ namespace dpn {
 					node.agg_urgency.merge(parent.agg_urgency);
 				}
 			};
-			each_node(aggregate, Direction::Push);
+			each_node(aggregate, Tread{.dependency = Dependency::Mine});
 			MSS(ok);
 		}
 
@@ -429,7 +455,7 @@ namespace dpn {
 				}
 			}
 		};
-		each_node(append, Direction::Push);
+		each_node(append, Tread{.dependency = Dependency::Mine});
 
 		set_fps_(list);
 		compute_effort_(list, filter);
@@ -452,7 +478,7 @@ namespace dpn {
 				item.path = path;
 			}
 		};
-		each_node(append, Direction::Push);
+		each_node(append, Tread{.dependency = Dependency::Mine});
 
 		set_fps_(list);
 		compute_effort_(list, filter);
@@ -490,9 +516,9 @@ namespace dpn {
 						std::cout << "Found dropped dependency from " << node.path(path) << " on " << root.text << std::endl;
 				}
 			};
-			node.each_dependency(detect_excluded_dependencies, false);
+			node.each_dependency(detect_excluded_dependencies, Dependency::Mine);
 		};
-		each_node(lambda, Direction::Push);
+		each_node(lambda, Tread{.dependency = Dependency::Mine});
 
 		set_fps_(list);
 		compute_effort_(list, filter);
@@ -515,7 +541,7 @@ namespace dpn {
 				item.path = path;
 			}
 		};
-		each_node(lambda, Direction::Push);
+		each_node(lambda, Tread{.dependency = Dependency::Mine});
 
 		set_fps_(list);
 		compute_effort_(list, filter);
@@ -541,7 +567,7 @@ namespace dpn {
 				item.path = path;
 			}
 		};
-		each_node(add_node, Direction::Push, true);
+		each_node(add_node, Tread{.dependency = Dependency::Mine, .include_link_nodes = true});
 
 		const auto nr_nodes = node__id.size();
 		for (const auto &[_,file]: fp__file_)
@@ -621,7 +647,8 @@ namespace dpn {
 				item.path = path;
 			}
 		};
-		each_node(add_node, Direction::Push, true);
+		each_node(add_node, Tread{.dependency = Dependency::Include, .include_link_nodes = true});
+		each_node(add_node, Tread{.dependency = Dependency::Mine, .include_link_nodes = true});
 
 		const auto nr_nodes = node__id.size();
 		for (const auto &[_,file]: fp__file_)
@@ -772,7 +799,7 @@ namespace dpn {
 					prev_path.push_back(&node);
 				};
 				for (const auto &child: item.node().childs)
-					each_node(child, lambda, Direction::Push);
+					each_node(child, lambda, Tread{.dependency = Dependency::Mine});
 
 				// Close the xml tags in reverse order
 				while (!tags.empty())
@@ -854,7 +881,7 @@ namespace dpn {
 						add_task(uid, node.text, path.size()+2, node.my_effort.todo()*15);
 				}
 			};
-			each_node(item.node(), lambda, Direction::Push);
+			each_node(item.node(), lambda, Tread{.dependency = Dependency::Mine});
 		}
 
 		MSS_END();
@@ -863,9 +890,13 @@ namespace dpn {
 	// Warning: still wip
 	// .? Start from get_features
 	// .? Prune branches without effort
-	bool Library::export_msproj2(const List &list, const Id__DepIds &id__dep_ids, const std::filesystem::path &output_fp) const
+	bool Library::export_msproj2(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const std::filesystem::path &output_fp) const
 	{
-		MSS_BEGIN(bool);
+		MSS_BEGIN(bool, "");
+		L(C(gubg::hr(nodes.items)));
+		L(C(gubg::hr(part_of)));
+		L(C(gubg::hr(after)));
+		L(C(gubg::hr(requires)));
 
 		const auto folder = output_fp.parent_path();
 		if (!folder.empty())
@@ -883,85 +914,80 @@ namespace dpn {
 		project.attr("xmlns", "http://schemas.microsoft.com/project");
 		auto tasks = project.tag("Tasks");
 
-		std::map<unsigned int, unsigned int> id__parent;
-		{
-			std::map<const Node *, unsigned int> node__id;
-			for (auto ix = 0u; ix < list.items.size(); ++ix)
-			{
-				const auto &item = list.items[ix];
-				const auto &node = item.node();
-				node__id[&node] = ix;
-			}
-
-			for (auto ix = 0u; ix < list.items.size(); ++ix)
-			{
-				const auto &item = list.items[ix];
-				const auto &node = item.node();
-				if (!item.path.empty())
-					id__parent[ix] = node__id[item.path.back()];
-			}
-		}
-
-		auto add_task = [&](unsigned int uid, const auto &text, unsigned int depth, unsigned int minutes){
+		auto add_task = [&](Id id, const auto &text, unsigned int depth, std::optional<unsigned int> minutes){
+			S("");
+			L(C(id)C(text)C(depth));
 			auto task = tasks.tag("Task");
-			task.tag("UID") << uid;
+			task.tag("UID") << id;
 			task.tag("Name") << (!text.empty() ? text : "[empty]");
 			task.tag("OutlineLevel") << depth;
-			if (minutes > 0)
+			if (minutes)
 			{
 				task.tag("DurationFormat") << 53;
 				{
-					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
+					const std::string pt = std::string("PT0H")+std::to_string(*minutes)+"M0S";
 					task.tag("Duration") << pt;
 					task.tag("Work") << pt;
 				}
 			}
-			if (auto it = id__dep_ids.find(uid); it != id__dep_ids.end() && !it->second.empty())
-			{
-				for (const auto dep_id: it->second)
+			gubg::with_value(part_of, id, [&](auto oid){
+				auto predecessor_link = task.tag("PredecessorLink");
+				predecessor_link.tag("PredecessorUID") << oid;
+				predecessor_link.tag("Type") << 3;
+			});
+			gubg::with_value(after, id, [&](auto oid){
+				auto predecessor_link = task.tag("PredecessorLink");
+				predecessor_link.tag("PredecessorUID") << oid;
+				predecessor_link.tag("Type") << 1;
+			});
+			gubg::with_value(requires, id, [&](const auto &oids){
+				for (auto oid: oids)
 				{
-					auto is_child = [&](){
-						auto it = id__parent.find(dep_id);
-						if (it == id__parent.end())
-							return false;
-						return it->second == uid;
-					};
-
-					if (!is_child())
-					{
-						auto predecessor_link = task.tag("PredecessorLink");
-						predecessor_link.tag("PredecessorUID") << dep_id;
-						predecessor_link.tag("Type") << 1;
-					}
+					auto predecessor_link = task.tag("PredecessorLink");
+					predecessor_link.tag("PredecessorUID") << oid;
+					predecessor_link.tag("Type") << 0;
 				}
-			}
+			});
 		};
 
-		for (auto ix = 0u; ix < list.items.size(); ++ix)
+		for (Id id = 0u; id < nodes.items.size(); ++id)
 		{
-			const auto &item = list.items[ix];
+			S("");
+			const auto &item = nodes.items[id];
 			const auto &node = item.node();
+			L(node);
 
 			auto is_leaf = [&](){
-				return node.childs.empty();
+				return node.childs.empty() && node.my_includes.empty() && node.my_requires.empty();
 			};
 
 			if (is_leaf())
 			{
 				const auto todo = node.my_effort.todo();
-				if (todo > 0)
-					add_task(ix, node.text, item.path.size()+2, todo*15);
+				if (todo == 0)
+					L("This leaf node has no my_effort");
+				else
+					add_task(id, node.text, node.depth(), todo*15);
 			}
 			else
 			{
 				const auto my_todo = node.my_effort.todo();
 				const auto filtered_todo = node.filtered_effort.todo();
-				if (filtered_todo > 0)
+				if (filtered_todo == 0)
+					L("This non-leaf node has no filtered_effort");
+				else
 				{
-					if (my_todo == filtered_todo)
-						add_task(ix, node.text, item.path.size()+2, my_todo*15);
+					if (!node.my_requires.empty())
+					{
+						add_task(id, node.text, node.depth(), 0);
+					}
+					else if (my_todo == filtered_todo)
+					{
+						// All effort is with me, child nodes without effort won't be added
+						add_task(id, node.text, node.depth(), my_todo*15);
+					}
 					else
-						add_task(ix, node.text, item.path.size()+2, 0);
+						add_task(id, node.text, node.depth(), std::nullopt);
 				}
 			}
 		}
@@ -1107,7 +1133,7 @@ namespace dpn {
 					nodes.insert(&node);
 				}
 			};
-			each_node(node, aggregate_effort, Direction::Push);
+			each_node(node, aggregate_effort, Tread{.dependency = Dependency::Mine});
 		}
 	}
 

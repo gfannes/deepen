@@ -8,6 +8,7 @@
 #include <vector>
 #include <filesystem>
 #include <algorithm>
+#include <ostream>
 
 namespace dpn { 
 
@@ -92,6 +93,8 @@ namespace dpn {
 			}
 		}
 	};
+
+	std::ostream &operator<<(std::ostream &, const List::Item &);
 
 } 
 
