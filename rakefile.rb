@@ -55,7 +55,7 @@ desc "Build"
 task :build => :prepare do
     cooker do |c|
         mode = :debug
-        # mode = :release
+        mode = :release
         c.option(mode)
         c.generate(:ninja, "dpn/app")
         c.ninja()

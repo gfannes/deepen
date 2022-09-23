@@ -43,6 +43,8 @@ namespace dpn { namespace config {
                     MSS(!!path_opt, log::error() << "Expected filepath to be set (attribute root.path)" << std::endl);
                     const auto &path = *path_opt;
 
+                    paths.push_back(path);
+
                     if (file_opt)
                     {
                         std::filesystem::path fp = *file_opt;
