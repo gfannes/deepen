@@ -87,6 +87,7 @@ namespace dpn {
 				return !fps_todo.empty();
 			};
 
+			std::map<std::filesystem::path, std::filesystem::path> fp__includer;
 			for (std::vector<std::filesystem::path> fps_todo; get_todos(fps_todo); )
 			{
 				for (const auto &fp: fps_todo)
@@ -119,8 +120,23 @@ namespace dpn {
 										{
 											switch (t)
 											{
-												case meta::Command::Include: node.my_includes.insert(dep_fp); break;
-												case meta::Command::Require: node.my_requires.insert(dep_fp); break;
+												case meta::Command::Include:
+												{
+													auto p = fp__includer.emplace(dep_fp, fp);
+													if (!p.second)
+													{
+														// An `include` relationship is the same as a parent-child relationship. Hence, we enforce only a single include per fp.
+														failures.push_back(dep);
+														log::error() << "File " << dep_fp << " is already included from " << p.first->second << ", cannot include it again from " << fp << std::endl;
+													}
+													node.my_includes.insert(dep_fp);
+												}
+												break;
+
+												case meta::Command::Require:
+												node.my_requires.insert(dep_fp);
+												break;
+
 												default: break;
 											}
 											node.all_dependencies.insert(dep_fp);
@@ -223,28 +239,31 @@ namespace dpn {
 					if (path.empty())
 						return;
 					const auto &parent = *path.back();
+
 					for (const auto &[key,src_values]: parent.all_tags)
 					{
-						if (!node.my_tags.count(key))
+						if (node.my_tags.count(key))
+							// If the key occurs in my_tags, we do not merge the parent values for this key
+							break;
+
+						// Merge the parent tags into node
+						auto &dst_values = node.all_tags[key];
+						for (const auto &value: src_values)
 						{
-							auto &dst_values = node.all_tags[key];
-							for (const auto &value: src_values)
+							const auto p = dst_values.emplace(value);
+							if (p.second)
 							{
-								const auto p = dst_values.emplace(value);
-								if (p.second)
-								{
-									for (const auto &incl_fp: node.my_includes)
+								auto push_to_dependency = [&](const auto &incl_fp){
+									auto it = fp__file_.find(incl_fp);
+									if (it != fp__file_.end())
 									{
-										auto it = fp__file_.find(incl_fp);
-										if (it != fp__file_.end())
-										{
-											auto &file = it->second;
-											const auto p = file.root.all_tags[key].emplace(value);
-											if (p.second)
-												dirty = true;
-										}
+										auto &file = it->second;
+										const auto p = file.root.all_tags[key].emplace(value);
+										if (p.second)
+											dirty = true;
 									}
-								}
+								};
+								node.each_dependency(push_to_dependency, false);
 							}
 						}
 					}
@@ -447,7 +466,12 @@ namespace dpn {
 
 		list.clear();
 
+		std::set<const Node *> nodes;
 		auto lambda = [&](const auto &node, const auto &path){
+			auto p = nodes.insert(&node);
+			if (!p.second)
+				return;
+
 			if (!filter(node))
 				return;
 
@@ -468,7 +492,7 @@ namespace dpn {
 			};
 			node.each_dependency(detect_excluded_dependencies, false);
 		};
-		each_node(lambda, Direction::PushWithDeps);
+		each_node(lambda, Direction::Push);
 
 		set_fps_(list);
 		compute_effort_(list, filter);
@@ -507,20 +531,17 @@ namespace dpn {
 		links.clear();
 
 		std::map<const Node *, std::size_t> node__id;
-		for (const auto &[_,file]: fp__file_)
-		{
-			auto add_node = [&](auto &node, const auto &path){
-				if (!filter(node))
-					return;
+		auto add_node = [&](auto &node, const auto &path){
+			if (!filter(node))
+				return;
 
-				if (auto p = node__id.emplace(&node, node__id.size()); p.second)
-				{
-					auto &item = nodes.items.emplace_back(node);
-					item.path = path;
-				}
-			};
-			file.each_node(add_node, Direction::Push);
-		}
+			if (auto p = node__id.emplace(&node, node__id.size()); p.second)
+			{
+				auto &item = nodes.items.emplace_back(node);
+				item.path = path;
+			}
+		};
+		each_node(add_node, Direction::Push, true);
 
 		const auto nr_nodes = node__id.size();
 		for (const auto &[_,file]: fp__file_)
@@ -558,7 +579,7 @@ namespace dpn {
 					}
 				}
 
-				// Link from me to all_dependencies
+				// Link from me to my_includes, and from my_includes to my links
 				for (const auto &incl_fp: node.my_includes)
 				{
 					auto it = fp__file_.find(incl_fp);
@@ -569,6 +590,105 @@ namespace dpn {
 						{
 							const auto dep_id = node__id[&file.root];
 							links[me_id].insert(dep_id);
+						}
+					}
+				}
+			};
+			file.each_node(add_links, Direction::Push);
+		}
+		MSS(nr_nodes == node__id.size(), log::internal_error() << "More nodes were added" << std::endl);
+
+		MSS_END();
+	}
+
+	bool Library::get_graph(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const Filter &filter) const
+	{
+		MSS_BEGIN(bool);
+
+		nodes.clear();
+		part_of.clear();
+		after.clear();
+		requires.clear();
+
+		std::map<const Node *, std::size_t> node__id;
+		auto add_node = [&](auto &node, const auto &path){
+			if (!filter(node))
+				return;
+
+			if (auto p = node__id.emplace(&node, node__id.size()); p.second)
+			{
+				auto &item = nodes.items.emplace_back(node);
+				item.path = path;
+			}
+		};
+		each_node(add_node, Direction::Push, true);
+
+		const auto nr_nodes = node__id.size();
+		for (const auto &[_,file]: fp__file_)
+		{
+			auto add_links = [&](auto &node, const auto &path){
+				if (!filter(node))
+					return;
+
+				const auto my_id = node__id[&node];
+
+				// node is part of its parent, if any
+				if (!path.empty())
+				{
+					const auto &parent = *path.back();
+					if (filter(parent))
+					{
+						const auto parent_id = node__id[&parent];
+						part_of[my_id] = parent_id;
+					}
+				}
+
+				// sibling dependencies
+				if (!node.agg_sequence.any)
+				{
+					std::optional<std::size_t> prev_child_id;
+					for (const auto &child: node.childs)
+					{
+						if (filter(child))
+						{
+							const auto child_id = node__id[&child];
+							if (prev_child_id)
+							{
+								// child comes after prev_child
+								after[child_id] = *prev_child_id;
+							}
+							prev_child_id = child_id;
+						}
+					}
+				}
+
+				// my_includes are part of node
+				for (const auto &incl_fp: node.my_includes)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						if (filter(file.root))
+						{
+							const auto dep_id = node__id[&file.root];
+							part_of[dep_id] = my_id;
+						}
+					}
+				}
+
+				// my_requires are only used by node, but not part.
+				// Eg, they can start before node starts
+				for (const auto &incl_fp: node.my_requires)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						if (filter(file.root))
+						{
+							const auto dep_id = node__id[&file.root];
+							requires[my_id].insert(dep_id);
 						}
 					}
 				}

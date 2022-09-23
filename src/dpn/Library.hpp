@@ -6,17 +6,15 @@
 #include <dpn/List.hpp>
 #include <dpn/Options.hpp>
 #include <dpn/enums.hpp>
+#include <dpn/plan/types.hpp>
 
 #include <gubg/std/filesystem.hpp>
 
 #include <map>
-#include <set>
 #include <ostream>
 #include <functional>
 
 namespace dpn { 
-
-	using Id__DepIds = std::map<std::size_t, std::set<std::size_t>>;
 
 	class Library
 	{
@@ -49,6 +47,7 @@ namespace dpn {
 		bool get_todo(List &, const Filter &);
 
         bool get_nodes_links(List &, Id__DepIds &, const Filter &) const;
+        bool get_graph(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const Filter &) const;
 
 		bool export_mindmap(const std::string &root_text, const List &, const Filter &, const std::filesystem::path &) const;
 		bool export_msproj(const List &, const Filter &, const std::filesystem::path &) const;
@@ -59,21 +58,21 @@ namespace dpn {
 
 		// Can visit nodes multiple times
 		template <typename Ftor>
-		void each_node(const Node &root, Ftor &&ftor, Direction direction) const
+		void each_node(const Node &root, Ftor &&ftor, Direction direction, bool all = false) const
 		{
 			Path path;
-			each_node_(root, path, ftor, direction);
+			each_node_(root, path, ftor, direction, all);
 		}
 		template <typename Ftor>
-		void each_node(Node &root, Ftor &&ftor, Direction direction)
+		void each_node(Node &root, Ftor &&ftor, Direction direction, bool all = false)
 		{
 			Path path;
-			each_node_(root, path, ftor, direction);
+			each_node_(root, path, ftor, direction, all);
 		}
 
 		// Can visit nodes multiple times
 		template <typename Ftor>
-		void each_node(Ftor &&ftor, Direction direction) const
+		void each_node(Ftor &&ftor, Direction direction, bool all = false) const
 		{
 			for (const auto &root_fp: roots_)
 			{
@@ -81,14 +80,21 @@ namespace dpn {
 				if (it != fp__file_.end())
 				{
 					const auto &file = it->second;
-					// We do not iterate file.root since that is an artificial node
-					for (const auto &child: file.root.childs)
-						each_node(child, ftor, direction);
+					if (all)
+					{
+						each_node(file.root, ftor, direction, all);
+					}
+					else
+					{
+						// We do not iterate file.root since that is an artificial node
+						for (const auto &child: file.root.childs)
+							each_node(child, ftor, direction, all);
+					}
 				}
 			}
 		}
 		template <typename Ftor>
-		void each_node(Ftor &&ftor, Direction direction)
+		void each_node(Ftor &&ftor, Direction direction, bool all = false)
 		{
 			for (const auto &root_fp: roots_)
 			{
@@ -96,16 +102,23 @@ namespace dpn {
 				if (it != fp__file_.end())
 				{
 					auto &file = it->second;
-					// We do not iterate file.root since that is an artificial node
-					for (auto &child: file.root.childs)
-						each_node(child, ftor, direction);
+					if (all)
+					{
+						each_node(file.root, ftor, direction, all);
+					}
+					else
+					{
+						// We do not iterate file.root since that is an artificial node
+						for (auto &child: file.root.childs)
+							each_node(child, ftor, direction, all);
+					}
 				}
 			}
 		}
 
 	private:
 		template <typename Ftor>
-		void each_node_(const Node &node, Path &path, Ftor &&ftor, Direction direction) const
+		void each_node_(const Node &node, Path &path, Ftor &&ftor, Direction direction, bool all) const
 		{
 			{
 				const auto it = std::find_if(path.begin(), path.end(), [&](auto ptr){return ptr == &node;});
@@ -114,46 +127,60 @@ namespace dpn {
 					return;
 			}
 
-			if (!node.my_includes.empty())
-			{
-				if (direction == Direction::PushWithDeps)
-					ftor(node, path);
-				for (const auto &dep_fp: node.my_includes)
+			unsigned int count = 0;
+			auto lambda = [&](const auto &dep_fp){
+				if (count == 0)
 				{
-					const auto it = fp__file_.find(dep_fp);
-					if (it != fp__file_.end())
+					if (all && direction == Direction::Push)
+						ftor(node, path);
+				}
+
+				const auto it = fp__file_.find(dep_fp);
+				if (it != fp__file_.end())
+				{
+					const auto &file = it->second;
+					if (all)
 					{
-						const auto &file = it->second;
-						if (!file.root.childs.empty())
-						{
-							path.push_back(&node);
-							// We do not iterate file.root since that is an artificial node
-							for (const auto &child: file.root.childs)
-								each_node_(child, path, ftor, direction);
-							path.pop_back();
-						}
+						path.push_back(&node);
+						each_node_(file.root, path, ftor, direction, all);
+						path.pop_back();
+					}
+					else if (!file.root.childs.empty())
+					{
+						path.push_back(&node);
+						// We do not iterate file.root since that is an artificial node
+						for (const auto &child: file.root.childs)
+							each_node_(child, path, ftor, direction, all);
+						path.pop_back();
 					}
 				}
-				if (direction == Direction::PullWithDeps)
+
+				++count;
+			};
+			node.each_dependency(lambda, false);
+
+			if (count > 0)
+			{
+				if (all && direction == Direction::Pull)
 					ftor(node, path);
 			}
 			else
 			{
-				if (direction == Direction::Push || direction == Direction::PushWithDeps)
+				if (direction == Direction::Push)
 					ftor(node, path);
 				if (!node.childs.empty())
 				{
 					path.push_back(&node);
 					for (const auto &child: node.childs)
-						each_node_(child, path, ftor, direction);
+						each_node_(child, path, ftor, direction, all);
 					path.pop_back();
 				}
-				if (direction == Direction::Pull || direction == Direction::PullWithDeps)
+				if (direction == Direction::Pull)
 					ftor(node, path);
 			}
 		}
 		template <typename Ftor>
-		void each_node_(Node &node, Path &path, Ftor &&ftor, Direction direction)
+		void each_node_(Node &node, Path &path, Ftor &&ftor, Direction direction, bool all)
 		{
 			{
 				const auto it = std::find_if(path.begin(), path.end(), [&](auto ptr){return ptr == &node;});
@@ -162,41 +189,55 @@ namespace dpn {
 					return;
 			}
 
-			if (!node.my_includes.empty())
-			{
-				if (direction == Direction::PushWithDeps)
-					ftor(node, path);
-				for (const auto &dep_fp: node.my_includes)
+			unsigned int count = 0;
+			auto lambda = [&](const auto &dep_fp){
+				if (count == 0)
 				{
-					const auto it = fp__file_.find(dep_fp);
-					if (it != fp__file_.end())
+					if (all && direction == Direction::Push)
+						ftor(node, path);
+				}
+
+				auto it = fp__file_.find(dep_fp);
+				if (it != fp__file_.end())
+				{
+					auto &file = it->second;
+					if (all)
 					{
-						auto &file = it->second;
-						if (!file.root.childs.empty())
-						{
-							path.push_back(&node);
-							// We do not iterate file.root since that is an artificial node
-							for (auto &child: file.root.childs)
-								each_node_(child, path, ftor, direction);
-							path.pop_back();
-						}
+						path.push_back(&node);
+						each_node_(file.root, path, ftor, direction, all);
+						path.pop_back();
+					}
+					else if (!file.root.childs.empty())
+					{
+						path.push_back(&node);
+						// We do not iterate file.root since that is an artificial node
+						for (auto &child: file.root.childs)
+							each_node_(child, path, ftor, direction, all);
+						path.pop_back();
 					}
 				}
-				if (direction == Direction::PullWithDeps)
+
+				++count;
+			};
+			node.each_dependency(lambda, false);
+
+			if (count > 0)
+			{
+				if (all && direction == Direction::Pull)
 					ftor(node, path);
 			}
 			else
 			{
-				if (direction == Direction::Push || direction == Direction::PushWithDeps)
+				if (direction == Direction::Push)
 					ftor(node, path);
 				if (!node.childs.empty())
 				{
 					path.push_back(&node);
 					for (auto &child: node.childs)
-						each_node_(child, path, ftor, direction);
+						each_node_(child, path, ftor, direction, all);
 					path.pop_back();
 				}
-				if (direction == Direction::Pull || direction == Direction::PullWithDeps)
+				if (direction == Direction::Pull)
 					ftor(node, path);
 			}
 		}

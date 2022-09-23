@@ -1,7 +1,7 @@
 #include <dpn/App.hpp>
 #include <dpn/log.hpp>
 #include <dpn/input/from_file.hpp>
-#include <dpn/plan/Resources.hpp>
+#include <dpn/plan/Planner.hpp>
 
 #include <gubg/naft/Document.hpp>
 #include <gubg/std/filesystem.hpp>
@@ -86,86 +86,26 @@ namespace dpn {
     {
         MSS_BEGIN(bool);
 
-        plan::Resources resources;
-        if (options_.resources_fp)
-        {
-            const auto &fp = *options_.resources_fp;
-            MSS(resources.load_from_file(fp), log::error() << "Could not load resources from " << fp << std::endl);
-            std::cout << resources << std::endl;
-        }
-
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List nodes;
-        Id__DepIds id__dep_ids;
+        Id__Id part_of, after;
+        Id__DepIds requires;
         const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
-        MSS(library_.get_nodes_links(nodes, id__dep_ids, filter), log::error() << "Could not get nodes and links" << std::endl);
+        MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
 
-        if (options_.output_filepath)
+        plan::Planner planner;
+        MSS(planner.setup_tasks(nodes, part_of, after, requires), log::error() << "Could not setup the tasks in the planner" << std::endl);
+        
+        if (options_.resources_fp)
         {
-            const std::filesystem::path base = *options_.output_filepath;
-            if (!std::filesystem::exists(base))
-                std::filesystem::create_directories(base);
-
-            const char sep = '|';
-
-            {
-                auto escape = [tmp = std::string{}](const auto &str) mutable -> const std::string & {
-                    tmp = str;
-                    for (auto &ch: tmp)
-                        ch = (ch==sep ? ' ' : ch);
-                    return tmp;
-                };
-
-                std::ofstream fo{base/"nodes.tsv"};
-                fo << "id";
-                fo << sep << "description";
-                fo << sep << "effort";
-                fo << sep << "urgency";
-                fo << sep << "rice";
-                fo << sep << "duedate";
-                fo << sep << "state";
-                fo << sep << "path";
-                fo << std::endl;
-                for (auto id = 0u; id < nodes.items.size(); ++id)
-                {
-                    const auto &item = nodes.items[id];
-                    const auto &node = item.node();
-                    Path path;
-                    if (!item.path.empty())
-                        path.assign(item.path.begin()+1, item.path.end());
-                    fo << id;
-                    fo << sep << escape(node.text);
-                    fo << sep << node.my_effort.todo();
-                    fo << sep << item.urgency_value();
-                    fo << sep << item.rice();
-                    {
-                        fo << sep;
-                        if (item.yyyymmdd() > 0)
-                            fo << item.yyyymmdd();
-                    }
-                    {
-                        fo << sep;
-                        if (item.state())
-                            fo << *item.state();
-                    }
-                    fo << sep << escape(to_string(path));
-                    fo << std::endl;
-                }
-            }
-
-            {
-                std::ofstream fo{base/"links.tsv"};
-                fo << "from";
-                fo << sep << "to";
-                fo << std::endl;
-                for (const auto &[id,dep_ids]: id__dep_ids)
-                {
-                    for (const auto dep_id: dep_ids)
-                        fo << id << sep << dep_id << std::endl;
-                }
-            }
+            const auto &fp = *options_.resources_fp;
+            MSS(planner.load_resources(fp), log::error() << "Could not load resources from " << fp << std::endl);
         }
+        
+        plan::Plan plan;
+        MSS(planner(plan), log::error() << "Could not create a plan" << std::endl);
+        std::cout << plan << std::endl;
 
         MSS_END();
     }

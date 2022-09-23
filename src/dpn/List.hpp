@@ -2,6 +2,7 @@
 #define HEADER_dpn_List_hpp_ALREADY_INCLUDED
 
 #include <dpn/Node.hpp>
+#include <dpn/enums.hpp>
 
 #include <string>
 #include <vector>
