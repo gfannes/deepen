@@ -105,11 +105,28 @@ namespace dpn { namespace plan {
 			move_unblocked_tasks();
 			if (stoppable.empty() && startable.empty())
 			{
-				MSS(blocked.empty(), log::error() << "Could not plan all tasks, cyclic dependencies are present" << std::endl);
+				if (!blocked.empty())
+				{
+					for (const auto &task: tasks_)
+					{
+						if (task.started() && task.stopped())
+							std::cout << "Done " << task;
+					}
+					for (const auto &task: tasks_)
+					{
+						if (task.started() && !task.stopped())
+							std::cout << "Running " << task;
+					}
+					for (const auto &task: tasks_)
+					{
+						if (!task.started() && !task.stopped())
+							std::cout << "Blocked " << task;
+					}
+					MSS(false, log::error() << "Could not plan all tasks, cyclic dependencies are present" << std::endl);
+				}
 				break;
 			}
 
-			L(C(blocked.size()));
 			for (move_unblocked_tasks(); !stoppable.empty(); move_unblocked_tasks())
 			{
 				for (auto id: stoppable)
@@ -123,21 +140,21 @@ namespace dpn { namespace plan {
 						time = std::max(time, *otask.stop);
 					}
 					task.stop = time;
-					L(time << " => stopped " << task);
+					if (task.is_feature)
+						std::cout << task;
 				}
 				stoppable.clear();
 			}
 
 			if (!startable.empty())
 			{
-				// auto id = *startable.begin();
-				auto id = *std::prev(startable.end());
+				auto id = *startable.begin();
+				// auto id = *std::prev(startable.end());
 				startable.erase(id);
 
 				auto &task = tasks_[id];
 
 				task.start = time;
-				L(time << " => started " << task);
 			}
 		}
 
