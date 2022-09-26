@@ -743,6 +743,98 @@ namespace dpn {
 		MSS_END();
 	}
 
+	bool Library::get_graph(List &nodes, plan::Graph &graph, const Filter &filter) const
+	{
+		MSS_BEGIN(bool);
+
+		nodes.clear();
+		graph.clear();
+
+		std::map<const Node *, std::size_t> node__id;
+		auto add_node = [&](auto &node, const auto &path){
+			if (!filter(node))
+				return;
+
+			if (auto p = node__id.emplace(&node, node__id.size()); p.second)
+			{
+				auto &item = nodes.items.emplace_back(node);
+				item.path = path;
+			}
+		};
+		each_node(add_node, Tread{.dependency = Dependency::Include, .include_link_nodes = true});
+		each_node(add_node, Tread{.dependency = Dependency::Mine, .include_link_nodes = true});
+
+		const auto nr_nodes = node__id.size();
+		for (const auto &[_,file]: fp__file_)
+		{
+			auto add_links = [&](auto &node, const auto &path){
+				if (!filter(node))
+					return;
+
+				const auto my_id = node__id[&node];
+
+				// Setup graph.parent
+				if (!path.empty())
+				{
+					const auto &parent = *path.back();
+					if (filter(parent))
+					{
+						const auto parent_id = node__id[&parent];
+						graph.parent[my_id] = parent_id;
+					}
+				}
+				for (const auto &incl_fp: node.my_includes)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						if (filter(file.root))
+						{
+							const auto dep_id = node__id[&file.root];
+							graph.parent[dep_id] = my_id;
+						}
+					}
+				}
+
+				// Setup graph.fs
+				if (!node.agg_sequence.any)
+				{
+					std::optional<std::size_t> prev_child_id;
+					for (const auto &child: node.childs)
+					{
+						if (filter(child))
+						{
+							const auto child_id = node__id[&child];
+							if (prev_child_id)
+								graph.fs[child_id].insert(*prev_child_id);
+							prev_child_id = child_id;
+						}
+					}
+				}
+
+				// Setup graph.ff
+				for (const auto &incl_fp: node.my_requires)
+				{
+					auto it = fp__file_.find(incl_fp);
+					if (it != fp__file_.end())
+					{
+						const auto &file = it->second;
+						if (filter(file.root))
+						{
+							const auto dep_id = node__id[&file.root];
+							graph.ff[my_id].insert(dep_id);
+						}
+					}
+				}
+			};
+			file.each_node(add_links, Direction::Push);
+		}
+		MSS(nr_nodes == node__id.size(), log::internal_error() << "More nodes were added" << std::endl);
+
+		MSS_END();
+	}
+
 	bool Library::export_mindmap(const std::string &root_text, const List &list, const Filter &filter, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);

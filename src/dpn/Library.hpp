@@ -7,6 +7,7 @@
 #include <dpn/Options.hpp>
 #include <dpn/enums.hpp>
 #include <dpn/plan/types.hpp>
+#include <dpn/plan/Graph.hpp>
 #include <dpn/Tread.hpp>
 
 #include <gubg/std/filesystem.hpp>
@@ -49,6 +50,7 @@ namespace dpn {
 
         bool get_nodes_links(List &, Id__DepIds &, const Filter &) const;
         bool get_graph(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const Filter &) const;
+        bool get_graph(List &nodes, plan::Graph &, const Filter &) const;
 
 		bool export_mindmap(const std::string &root_text, const List &, const Filter &, const std::filesystem::path &) const;
 		bool export_msproj(const List &, const Filter &, const std::filesystem::path &) const;

@@ -10,8 +10,10 @@ namespace dpn {
 
 	using Id__Id = std::map<Id, Id>;
 
+	using Ids = std::set<Id>;
 	using Deps = std::set<Id>;
 
+	using Id__Ids = std::map<Id, Deps>;
 	using Id__DepIds = std::map<Id, Deps>;
 
 } 
