@@ -694,14 +694,22 @@ namespace dpn {
 
 		graph.clear();
 
-		Id next_id = 0;
+		Id next_id_ = 0;
+		auto generate_id = [&](){
+			const auto id = next_id_;
+			// We leave room for a potential self-node: an artificial leaf node that
+			// contains the effort of a non-leaf node
+			next_id_ += 2;
+			return id;
+		};
+
 		std::set<const Node *> known_nodes;
 		// We keep a path based on Ids ourselves
 		std::vector<Id> id_path;
 		auto assign_id = [&](const auto &node, const auto &path){
 			// We create a Vertex for every Node we observe, even if we observe the same Node multiple times
 			// To ensure the effort aggregation is correct, we assume that the first user of a feature pays
-			const auto my_id = next_id++;
+			const auto my_id = generate_id();
 
 			graph.vertices.insert(my_id);
 			graph.text[my_id] = node.text;
@@ -774,11 +782,10 @@ namespace dpn {
 			if (!effort || *effort == 0)
 				continue;
 
-			const auto my_id = next_id++;
+			const auto my_id = id+1;
 
 			graph.vertices.insert(my_id);
-			graph.text[my_id] = graph.text[id];
-			graph.text[id] = "[self]";
+			graph.text[my_id] = graph.text[id] + " [self]";
 			graph.depth[my_id] = graph.depth[id]+1;
 			graph.my_effort[my_id] = graph.my_effort[id];
 			graph.agg_effort[my_id] = graph.my_effort[my_id];
@@ -985,8 +992,9 @@ namespace dpn {
 			// Merlin Project does not accept nodes with OutlineLevel == 0, hence the +1
 			task.tag("OutlineLevel") << *gubg::get(graph.depth, id)+1;
 
+			if (auto minutes_ptr = gubg::get(graph.my_effort, id))
 			{
-				const auto minutes = *gubg::get(graph.my_effort, id)*15;
+				const auto minutes = *minutes_ptr*15;
 				task.tag("DurationFormat") << 53;
 				{
 					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
