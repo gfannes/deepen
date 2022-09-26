@@ -310,7 +310,6 @@ namespace dpn {
                     {
                         plan::Graph graph;
                         MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
-                        std::cout << graph;
                         MSS(library_.export_msproj2(graph, fp));
                     }
                     else

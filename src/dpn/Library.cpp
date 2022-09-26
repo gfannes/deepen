@@ -748,11 +748,12 @@ namespace dpn {
 				graph.agg_effort[*parent] += graph.agg_effort[my_id];
 		}
 
-		// Prune Vertices without effort
+		// Prune leaf Vertices without effort
 		std::set<Id> non_leafs;
 		for (bool again = true; again; )
 		{
 			// Identify the Vertices that are someone's parent: these are not leafs
+			non_leafs.clear();
 			for (auto id: graph.vertices)
 			{
 				if (auto parent = gubg::get(graph.parent, id))
@@ -764,7 +765,7 @@ namespace dpn {
 			{
 				if (non_leafs.count(id))
 					continue;
-				auto effort = gubg::get(graph.agg_effort, id);
+				auto effort = gubg::get(graph.my_effort, id);
 				if (!effort || *effort == 0)
 					empty_leafs.insert(id);
 			}
