@@ -14,8 +14,9 @@ namespace dpn {
 	class Filter
 	{
 	public:
-		TagSets incl_tags;
-		TagSets excl_tags;
+		TagSets any_tags;
+		TagSets all_tags;
+		TagSets none_tags;
 		std::optional<meta::Status> status;
 		std::optional<meta::Moscow> moscow;
 

@@ -111,7 +111,7 @@ namespace dpn {
 									// Split the arguments in Tags and dependencies that should be resolved
 									// The Tags will filter the imported data
 									std::list<std::string> deps;
-									TagSets incl_tags;
+									TagSets all_tags;
 									for (const auto &dep: command->arguments)
 									{
 										meta::Tag::Opt tag;
@@ -119,7 +119,7 @@ namespace dpn {
 										if (!parse(tag, strange))
 											failures.push_back(dep);
 										if (tag)
-											incl_tags[tag->key].insert(tag->value);
+											all_tags[tag->key].insert(tag->value);
 										else
 											deps.push_back(dep);
 									}
@@ -148,7 +148,7 @@ namespace dpn {
 													}
 													node.my_includes.insert(dep_fp);
 													auto &link = goc(node.links, Link::Include, dep_fp);
-													link.filter.incl_tags = incl_tags;
+													link.filter.all_tags = all_tags;
 												}
 												break;
 
@@ -156,7 +156,7 @@ namespace dpn {
 												{
 													node.my_requires.insert(dep_fp);
 													auto &link = goc(node.links, Link::Require, dep_fp);
-													link.filter.incl_tags = incl_tags;
+													link.filter.all_tags = all_tags;
 												}
 												break;
 
@@ -688,27 +688,22 @@ namespace dpn {
 		MSS_END();
 	}
 
-	bool Library::get_graph(List &nodes, plan::Graph &graph, const Filter &filter) const
+	bool Library::get_graph(plan::Graph &graph, const Filter &filter) const
 	{
 		MSS_BEGIN(bool);
 
-		nodes.clear();
 		graph.clear();
 
-		Id id = 0;
+		Id next_id = 0;
 		std::set<const Node *> known_nodes;
 		// We keep a path based on Ids ourselves
 		std::vector<Id> id_path;
 		auto assign_id = [&](const auto &node, const auto &path){
 			// We create a Vertex for every Node we observe, even if we observe the same Node multiple times
 			// To ensure the effort aggregation is correct, we assume that the first user of a feature pays
-			const auto my_id = id++;
-
-			auto &item = nodes.items.emplace_back(node);
-			item.path = path;
+			const auto my_id = next_id++;
 
 			graph.vertices.insert(my_id);
-
 			graph.text[my_id] = node.text;
 			graph.depth[my_id] = path.size();
 			if (known_nodes.count(&node) == 0)
@@ -746,19 +741,20 @@ namespace dpn {
 		}
 
 		// Prune Vertices without effort
+		std::set<Id> non_leafs;
 		for (bool again = true; again; )
 		{
-			std::set<Id> parents;
+			// Identify the Vertices that are someone's parent: these are not leafs
 			for (auto id: graph.vertices)
 			{
 				if (auto parent = gubg::get(graph.parent, id))
-					parents.insert(*parent);
+					non_leafs.insert(*parent);
 			}
 
 			std::set<Id> empty_leafs;
 			for (auto id: graph.vertices)
 			{
-				if (parents.count(id))
+				if (non_leafs.count(id))
 					continue;
 				auto effort = gubg::get(graph.agg_effort, id);
 				if (!effort || *effort == 0)
@@ -769,6 +765,25 @@ namespace dpn {
 				graph.erase(id);
 
 			again = !empty_leafs.empty();
+		}
+
+		// Create leaf nodes for non-leafs with my_effort != 0
+		for (auto id: non_leafs)
+		{
+			auto effort = gubg::get(graph.my_effort, id);
+			if (!effort || *effort == 0)
+				continue;
+
+			const auto my_id = next_id++;
+
+			graph.vertices.insert(my_id);
+			graph.text[my_id] = graph.text[id];
+			graph.text[id] = "[self]";
+			graph.depth[my_id] = graph.depth[id]+1;
+			graph.my_effort[my_id] = graph.my_effort[id];
+			graph.agg_effort[my_id] = graph.my_effort[my_id];
+			graph.my_effort[id] = 0;
+			graph.parent[my_id] = id;
 		}
 
 		MSS_END();
@@ -937,7 +952,7 @@ namespace dpn {
 	// Warning: still wip
 	// .? Start from get_features
 	// .? Prune branches without effort
-	bool Library::export_msproj2(List &nodes, const plan::Graph &graph, const std::filesystem::path &output_fp) const
+	bool Library::export_msproj2(const plan::Graph &graph, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);
 
@@ -971,7 +986,7 @@ namespace dpn {
 			task.tag("OutlineLevel") << *gubg::get(graph.depth, id)+1;
 
 			{
-				const auto minutes = *gubg::get(graph.agg_effort, id)*15;
+				const auto minutes = *gubg::get(graph.my_effort, id)*15;
 				task.tag("DurationFormat") << 53;
 				{
 					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";

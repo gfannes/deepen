@@ -33,8 +33,8 @@ namespace dpn {
         // .@ Remove tags_ and all its users
         std::list<std::string> tags_;//Old
 
-        std::map<std::string, std::set<std::string>> incl_tags;//New
-        std::map<std::string, std::set<std::string>> excl_tags;//New
+        std::map<std::string, std::set<std::string>> any_tags;//New
+        std::map<std::string, std::set<std::string>> none_tags;//New
 
         std::optional<onto::Format> format;
 

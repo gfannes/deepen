@@ -33,29 +33,6 @@ namespace dpn {
 		return str;
 	}
 
-	bool Node::has_matching_tags(const TagSets &wanted_tags, bool on_empty) const
-	{
-		if (wanted_tags.empty())
-			return on_empty;
-		for (const auto &[key,wanted_values]: wanted_tags)
-		{
-			const auto it = all_tags.find(key);
-			if (it == all_tags.end())
-				return false;
-
-			bool found_match = false;
-			for (const auto &value: wanted_values)
-			{
-				if (it->second.count(value))
-					// If one of the values for a given key matches, we have a match
-					found_match = true;
-			}
-			if (!found_match)
-				return false;
-		}
-		return true;
-	}
-
 	std::string to_string(const Path &path, char sep)
 	{
 		std::string str;

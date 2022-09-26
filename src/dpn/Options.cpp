@@ -95,7 +95,7 @@ namespace dpn {
                             || set_sort_if("due", Sort::DueDate)
                             , log::error() << "Unknown sort type '" << tmp << "'" << std::endl);
                     }
-                    else if (is("-t", "--incl_tag"))
+                    else if (is("-t", "--any_tag"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
                         tags_.push_back(tmp);
@@ -114,9 +114,9 @@ namespace dpn {
                             }
                         }
 
-                        incl_tags[key].insert(value);
+                        any_tags[key].insert(value);
                     }
-                    else if (is("-T", "--excl_tag"))
+                    else if (is("-T", "--none_tag"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a tag" << std::endl);
                         std::string key, value;
@@ -133,7 +133,7 @@ namespace dpn {
                             }
                         }
 
-                        excl_tags[key].insert(value);
+                        none_tags[key].insert(value);
                     }
                     else if (is("-d", "--details"))
                     {
@@ -252,8 +252,8 @@ namespace dpn {
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
         option("-R", "--resources", "<FILEPATH>", "Filepath to resources used for planning [optional]");
         option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
-        option("-t", "--incl_tag", "<STRING>:<STRING>", "Include key-value tag, all keys should match (AND), one value per key is enough (OR)");
-        option("-T", "--excl_tag", "<STRING>:<STRING>", "Exclude key-value tag, all keys should match (AND), one value per key is enough (OR)");
+        option("-t", "--any_tag", "<STRING>:<STRING>", "Include key-value tag, all keys should match (AND), one value per key is enough (OR)");
+        option("-T", "--none_tag", "<STRING>:<STRING>", "Exclude key-value tag, all keys should match (AND), one value per key is enough (OR)");
         option("-m", "--moscow", "[mscw]+", "Moscow priorities to use");
         option("-f", "--format", "<STRING>", "Output format (md|jira|textile)");
         option("--", "--end", "", "All subsequent items will be interpreted as argument");

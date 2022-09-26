@@ -102,8 +102,6 @@ namespace dpn {
 
 		std::string path(const Path &, char sep = '/') const;
 
-		bool has_matching_tags(const TagSets &wanted_tags, bool on_empty) const;
-
 		template <typename Meta>
 		const Meta *get() const
 		{

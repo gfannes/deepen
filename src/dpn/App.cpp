@@ -91,7 +91,7 @@ namespace dpn {
         List nodes;
         Id__Id part_of, after;
         Id__DepIds requires;
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, };
         MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
 
         plan::Planner planner;
@@ -251,7 +251,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .status = status, .moscow = options_.moscow};
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, .status = status, .moscow = options_.moscow};
         MSS(library_.get(list, filter));
 
         MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
@@ -268,7 +268,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_due(list, filter));
@@ -287,7 +287,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_features(list, filter));
@@ -304,14 +304,14 @@ namespace dpn {
             {
                 if (true)
                 {
-                    const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
+                    const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, };
                     List nodes;
                     if (true)
                     {
                         plan::Graph graph;
-                        MSS(library_.get_graph(nodes, graph, filter), log::error() << "Could not get graph" << std::endl);
+                        MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
                         std::cout << graph;
-                        MSS(library_.export_msproj2(nodes, graph, fp));
+                        MSS(library_.export_msproj2(graph, fp));
                     }
                     else
                     {
@@ -337,7 +337,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_todo(list, filter));
@@ -373,7 +373,7 @@ namespace dpn {
             }
         };
 
-        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, .moscow = options_.moscow};
         const Tread tread = {.dependency = Dependency::Mine};
 
         Nodes nodes;
@@ -393,9 +393,10 @@ namespace dpn {
         TagSets tag_sets;
         using KV = std::pair<std::string, std::string>;
         std::map<KV, std::set<std::filesystem::path>> kv__fps;
+        const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags};
         library_.each_file([&](const auto &file){
             auto collect = [&](const auto &node, const auto &_){
-                if (node.has_matching_tags(options_.incl_tags, true) && !node.has_matching_tags(options_.excl_tags, false))
+                if (filter(node))
                 {
                     for (const auto &kv: node.my_tags)
                     {
