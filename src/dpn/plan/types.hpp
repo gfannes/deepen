@@ -1,5 +1,5 @@
-#ifndef HEADER_dpn_types_hpp_ALREADY_INCLUDED
-#define HEADER_dpn_types_hpp_ALREADY_INCLUDED
+#ifndef HEADER_dpn_plan_types_hpp_ALREADY_INCLUDED
+#define HEADER_dpn_plan_types_hpp_ALREADY_INCLUDED
 
 #include <map>
 #include <set>

@@ -9,8 +9,10 @@
 #include <dpn/plan/types.hpp>
 #include <dpn/plan/Graph.hpp>
 #include <dpn/Tread.hpp>
+#include <dpn/Filter.hpp>
 
 #include <gubg/std/filesystem.hpp>
+#include <gubg/map.hpp>
 
 #include <map>
 #include <ostream>
@@ -21,16 +23,6 @@ namespace dpn {
 	class Library
 	{
 	public:
-		struct Filter
-		{
-			TagSets incl_tags;
-			TagSets excl_tags;
-			std::optional<meta::Status> status;
-			std::optional<meta::Moscow> moscow;
-
-			bool operator()(const Node &) const;
-		};
-
 		Library(const config::Config &config, const Options &options): config_(config), options_(options) {}
 
 		void clear();
@@ -40,8 +32,6 @@ namespace dpn {
 		bool resolve();
 
 		std::optional<std::filesystem::path> get_fp(const Node &) const;
-
-		void print_debug(std::ostream &, const Filter &) const;
 
 		bool get(List &, const Filter &);
 		bool get_due(List &, const Filter &);
@@ -54,7 +44,7 @@ namespace dpn {
 
 		bool export_mindmap(const std::string &root_text, const List &, const Filter &, const std::filesystem::path &) const;
 		bool export_msproj(const List &, const Filter &, const std::filesystem::path &) const;
-		bool export_msproj2(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const std::filesystem::path &) const;
+		bool export_msproj2(List &nodes, const plan::Graph &, const std::filesystem::path &) const;
 
 		template <typename Ftor>
 		void each_file(Ftor &&ftor){for (const auto &[_,file]: fp__file_) ftor(file);}
@@ -79,18 +69,16 @@ namespace dpn {
 		{
 			for (const auto &root_fp: roots_)
 			{
-				const auto it = fp__file_.find(root_fp);
-				if (it != fp__file_.end())
+				if (auto file = gubg::get(fp__file_, root_fp))
 				{
-					const auto &file = it->second;
 					if (tread.include_link_nodes)
 					{
-						each_node(file.root, ftor, tread);
+						each_node(file->root, ftor, tread);
 					}
 					else
 					{
-						// We do not iterate file.root since that is an artificial node
-						for (const auto &child: file.root.childs)
+						// We do not iterate file->root since that is an artificial node
+						for (const auto &child: file->root.childs)
 							each_node(child, ftor, tread);
 					}
 				}
@@ -101,22 +89,176 @@ namespace dpn {
 		{
 			for (const auto &root_fp: roots_)
 			{
-				const auto it = fp__file_.find(root_fp);
-				if (it != fp__file_.end())
+				if (auto file = gubg::get(fp__file_, root_fp))
 				{
-					auto &file = it->second;
 					if (tread.include_link_nodes)
 					{
-						each_node(file.root, ftor, tread);
+						each_node(file->root, ftor, tread);
 					}
 					else
 					{
-						// We do not iterate file.root since that is an artificial node
-						for (auto &child: file.root.childs)
+						// We do not iterate file->root since that is an artificial node
+						for (auto &child: file->root.childs)
 							each_node(child, ftor, tread);
 					}
 				}
 			}
+		}
+
+
+		template <typename Agg, typename... Args>
+		void aggregate(std::list<Agg> &aggs, const Node &node, const Tread &tread, const Filter &filter, Args&... args) const
+		{
+			const auto do_process = filter(node) && (tread.include_link_nodes || node.type == Node::Type::Normal);
+			Agg *parent_agg = nullptr;
+			if (do_process)
+			{
+				if (!aggs.empty())
+					parent_agg = &aggs.back();
+				if (tread.direction == Direction::Push)
+				{
+					auto &dst = aggs.emplace_back(node, args...);
+					if (parent_agg)
+					{
+						auto &src = *parent_agg;
+						dst(src);
+					}
+				}
+			}
+
+			for (const auto &child: node.childs)
+				aggregate<Agg>(aggs, child, tread, filter, args...);
+
+			node.each_link(
+				[&](const auto &link){
+					if (auto file = gubg::get(fp__file_, link.fp))
+						aggregate<Agg>(aggs, file->root, tread, filter.merge(link.filter), args...);
+				},
+				tread.dependency);
+
+			if (do_process)
+			{
+				if (tread.direction == Direction::Pull)
+				{
+					auto &src = aggs.emplace_back(node, args...);
+					if (parent_agg)
+					{
+						auto &dst = *parent_agg;
+						dst(src);
+					}
+				}
+				aggs.pop_back();
+			}
+		}
+		template <typename Agg, typename... Args>
+		void aggregate(std::list<Agg> &aggs, Node &node, const Tread &tread, const Filter &filter, Args&... args)
+		{
+			const auto do_process = filter(node) && (tread.include_link_nodes || node.type == Node::Type::Normal);
+			Agg *parent_agg = nullptr;
+			if (do_process)
+			{
+				if (!aggs.empty())
+					parent_agg = &aggs.back();
+				if (tread.direction == Direction::Push)
+				{
+					auto &dst = aggs.emplace_back(node, args...);
+					if (parent_agg)
+					{
+						auto &src = *parent_agg;
+						dst(src);
+					}
+				}
+			}
+
+			for (auto &child: node.childs)
+				aggregate<Agg>(aggs, child, tread, filter, args...);
+
+			node.each_link(
+				[&](const auto &link){
+					if (auto file = gubg::get(fp__file_, link.fp))
+						aggregate<Agg>(aggs, file->root, tread, filter.merge(link.filter), args...);
+				},
+				tread.dependency);
+
+			if (do_process)
+			{
+				if (tread.direction == Direction::Pull)
+				{
+					auto &src = aggs.emplace_back(node, args...);
+					if (parent_agg)
+					{
+						auto &dst = *parent_agg;
+						dst(src);
+					}
+				}
+				aggs.pop_back();
+			}
+		}
+
+		template <typename Agg, typename... Args>
+		void aggregate(const Tread &tread, const Filter &filter, Args&... args) const
+		{
+			std::list<Agg> aggs;
+			for (const auto &root_fp: roots_)
+			{
+				if (auto file = gubg::get(fp__file_, root_fp))
+				{
+					if (tread.include_link_nodes)
+						aggregate<Agg>(aggs, file->root, tread, filter, args...);
+					else
+					{
+						// We do not iterate file->root since that is an artificial node
+						for (const auto &child: file->root.childs)
+							aggregate<Agg>(aggs, child, tread, filter, args...);
+					}
+				}
+			}
+		}
+		template <typename Agg, typename... Args>
+		void aggregate(const Tread &tread, const Filter &filter, Args&... args)
+		{
+			std::list<Agg> aggs;
+			for (const auto &root_fp: roots_)
+			{
+				if (auto file = gubg::get(fp__file_, root_fp))
+				{
+					if (tread.include_link_nodes)
+						aggregate<Agg>(aggs, file->root, tread, filter, args...);
+					else
+					{
+						// We do not iterate file->root since that is an artificial node
+						for (auto &child: file->root.childs)
+							aggregate<Agg>(aggs, child, tread, filter, args...);
+					}
+				}
+			}
+		}
+
+		template <typename Ftor>
+		void each_node2(Ftor &ftor, const Tread &tread, const Filter &filter) const
+		{
+			Path path;
+			struct Lambda
+			{
+				const Node &node;
+				Path &path;
+				const Tread &tread;
+				Ftor &ftor;
+				Lambda(const Node &node, Path &path, const Tread &tread, Ftor &ftor): node(node), path(path), tread(tread), ftor(ftor)
+				{
+					if (tread.direction == Direction::Push)
+						ftor(node, path);
+					path.push_back(&node);
+				}
+				void operator()(const Lambda &) { }
+				~Lambda()
+				{
+					path.pop_back();
+					if (tread.direction == Direction::Pull)
+						ftor(node, path);
+				}
+			};
+			aggregate<Lambda>(tread, filter, path, tread, ftor);
 		}
 
 	private:
@@ -131,34 +273,32 @@ namespace dpn {
 			}
 
 			unsigned int count = 0;
-			auto lambda = [&](const auto &dep_fp){
+			auto lambda = [&](const auto &link){
 				if (count == 0)
 				{
 					if (tread.include_link_nodes && tread.direction == Direction::Push)
 						ftor(node, path);
 				}
 
-				const auto it = fp__file_.find(dep_fp);
-				if (it != fp__file_.end())
+				if (auto file = gubg::get(fp__file_, link.fp))
 				{
-					const auto &file = it->second;
 					if (tread.include_link_nodes)
 					{
 						path.push_back(&node);
-						each_node_(file.root, path, ftor, tread);
+						each_node_(file->root, path, ftor, tread);
 						path.pop_back();
 					}
-					else if (!file.root.childs.empty())
+					else if (!file->root.childs.empty())
 					{
-						// We do not iterate file.root since that is an artificial node
-						for (const auto &child: file.root.childs)
+						// We do not iterate file->root since that is an artificial node
+						for (const auto &child: file->root.childs)
 							each_node_(child, path, ftor, tread);
 					}
 				}
 
 				++count;
 			};
-			node.each_dependency(lambda, tread.dependency);
+			node.each_link(lambda, tread.dependency);
 
 			if (count > 0)
 			{
@@ -191,34 +331,32 @@ namespace dpn {
 			}
 
 			unsigned int count = 0;
-			auto lambda = [&](const auto &dep_fp){
+			auto lambda = [&](const auto &link){
 				if (count == 0)
 				{
 					if (tread.include_link_nodes && tread.direction == Direction::Push)
 						ftor(node, path);
 				}
 
-				auto it = fp__file_.find(dep_fp);
-				if (it != fp__file_.end())
+				if (auto file = gubg::get(fp__file_, link.fp))
 				{
-					auto &file = it->second;
 					if (tread.include_link_nodes)
 					{
 						path.push_back(&node);
-						each_node_(file.root, path, ftor, tread);
+						each_node_(file->root, path, ftor, tread);
 						path.pop_back();
 					}
-					else if (!file.root.childs.empty())
+					else if (!file->root.childs.empty())
 					{
-						// We do not iterate file.root since that is an artificial node
-						for (auto &child: file.root.childs)
+						// We do not iterate file->root since that is an artificial node
+						for (auto &child: file->root.childs)
 							each_node_(child, path, ftor, tread);
 					}
 				}
 
 				++count;
 			};
-			node.each_dependency(lambda, tread.dependency);
+			node.each_link(lambda, tread.dependency);
 
 			if (count > 0)
 			{

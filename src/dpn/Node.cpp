@@ -2,18 +2,9 @@
 
 #include <gubg/naft/Document.hpp>
 #include <gubg/OnlyOnce.hpp>
+#include <gubg/hr.hpp>
 
 namespace dpn { 
-
-	std::set<std::filesystem::path> Node::my_dependencies() const
-	{
-		auto res = my_includes;
-		{
-			auto copy = my_requires;
-			res.merge(copy);
-		}
-		return res;
-	}
 
 	unsigned int Node::depth(bool include_roots) const
 	{
@@ -85,6 +76,7 @@ namespace dpn {
 		n.attr("text", node.text);
 		n.attr("depth", node.depth(true));
 		n.attr("parent", node.parent);
+		n.attr("all_tags", gubg::hr(node.all_tags));
 		return os;
 	}
 

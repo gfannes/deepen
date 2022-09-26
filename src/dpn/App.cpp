@@ -91,7 +91,7 @@ namespace dpn {
         List nodes;
         Id__Id part_of, after;
         Id__DepIds requires;
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
         MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
 
         plan::Planner planner;
@@ -110,7 +110,7 @@ namespace dpn {
         MSS_END();
     }
 
-    bool App::show_items_(List &list, Sort sort, bool reverse, const Library::Filter &filter) const
+    bool App::show_items_(List &list, Sort sort, bool reverse, const Filter &filter) const
     {
         MSS_BEGIN(bool);
         
@@ -251,7 +251,7 @@ namespace dpn {
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
         List list;
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .status = status, .moscow = options_.moscow};
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .status = status, .moscow = options_.moscow};
         MSS(library_.get(list, filter));
 
         MSS(show_items_(list, options_.sort.value_or(Sort::Rice), options_.reverse, filter));
@@ -268,7 +268,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_due(list, filter));
@@ -287,7 +287,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_features(list, filter));
@@ -304,12 +304,22 @@ namespace dpn {
             {
                 if (true)
                 {
+                    const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
                     List nodes;
-                    Id__Id part_of, after;
-                    Id__DepIds requires;
-                    const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, };
-                    MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
-                    MSS(library_.export_msproj2(nodes, part_of, after, requires, fp));
+                    if (true)
+                    {
+                        plan::Graph graph;
+                        MSS(library_.get_graph(nodes, graph, filter), log::error() << "Could not get graph" << std::endl);
+                        std::cout << graph;
+                        MSS(library_.export_msproj2(nodes, graph, fp));
+                    }
+                    else
+                    {
+                        Id__Id part_of, after;
+                        Id__DepIds requires;
+                        MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
+                        // MSS(library_.export_msproj2(nodes, part_of, after, requires, fp));
+                    }
                 }
                 else
                 {
@@ -327,7 +337,7 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
 
         List list;
         MSS(library_.get_todo(list, filter));
@@ -343,9 +353,33 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        const Library::Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        gubg::naft::Document doc{std::cout};
+        using Nodes = std::list<gubg::naft::Node>;
 
-        library_.print_debug(std::cout, filter);
+        struct Print
+        {
+            Nodes &nodes;
+            Print(const Node &node, Nodes &nodes): nodes(nodes)
+            {
+                auto &n = nodes.emplace_back(nodes.back().node("Node"));
+                n.attr("text", node.text);
+            }
+            void operator()(const Print &other)
+            {
+            }
+            ~Print()
+            {
+                nodes.pop_back();
+            }
+        };
+
+        const Filter filter = {.incl_tags = options_.incl_tags, .excl_tags = options_.excl_tags, .moscow = options_.moscow};
+        const Tread tread = {.dependency = Dependency::Mine};
+
+        Nodes nodes;
+        nodes.emplace_back(doc.node("Print"));
+
+        library_.aggregate<Print>(tread, filter, nodes);
 
         MSS_END();
     }
@@ -360,7 +394,7 @@ namespace dpn {
         using KV = std::pair<std::string, std::string>;
         std::map<KV, std::set<std::filesystem::path>> kv__fps;
         library_.each_file([&](const auto &file){
-            auto collect = [&](const auto &node, const auto &path){
+            auto collect = [&](const auto &node, const auto &_){
                 if (node.has_matching_tags(options_.incl_tags, true) && !node.has_matching_tags(options_.excl_tags, false))
                 {
                     for (const auto &kv: node.my_tags)

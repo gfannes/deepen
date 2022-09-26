@@ -23,7 +23,7 @@ namespace dpn {
 
     enum class Dependency
     {
-        None, Include, Require, Mine, All,
+        None, Include, Require, Mine,
     };
 
     enum class Sort

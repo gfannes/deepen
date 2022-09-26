@@ -29,7 +29,7 @@ namespace dpn {
 		MSS_BEGIN(bool);
 
 		bool ok = true;
-		auto interpret = [&](auto &node, auto &path){
+		auto interpret = [&](auto &node, auto &_){
 			// Parse as many meta items as possible and insert into node.metas and some node.my_ fields
 			std::string text;
 			for (gubg::Strange strange{node.text}; (strange.strip_left(' '), !strange.empty()); )

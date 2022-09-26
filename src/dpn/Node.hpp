@@ -2,6 +2,7 @@
 #define HEADER_dpn_Node_hpp_ALREADY_INCLUDED
 
 #include <dpn/enums.hpp>
+#include <dpn/types.hpp>
 #include <dpn/Attribute.hpp>
 #include <dpn/meta/State.hpp>
 #include <dpn/meta/Moscow.hpp>
@@ -11,6 +12,7 @@
 #include <dpn/meta/Urgency.hpp>
 #include <dpn/meta/Command.hpp>
 #include <dpn/meta/Tag.hpp>
+#include <dpn/Link.hpp>
 #include <dpn/log.hpp>
 
 #include <gubg/std/filesystem.hpp>
@@ -27,9 +29,6 @@ namespace dpn {
 	class Node;
 
 	using Path = std::vector<const Node *>;
-
-	using Tags = std::map<std::string, std::string>;
-	using TagSets = std::map<std::string, std::set<std::string>>;
 	
 	class Node
 	{
@@ -72,39 +71,27 @@ namespace dpn {
 
 		std::set<std::filesystem::path> my_includes;
 		std::set<std::filesystem::path> my_requires;
-		std::set<std::filesystem::path> my_dependencies() const;
+		Links links;
 		
 		std::set<std::filesystem::path> all_dependencies;
 
 		template <typename Ftor>
-		void each_dependency(Ftor &&ftor, Dependency dep) const
+		void each_link(Ftor &&ftor, Dependency dep) const
 		{
-			switch (dep)
+			for (const auto &link: links)
 			{
-				case Dependency::None: break;
-
-				case Dependency::Include:
-				for (const auto &fp: my_includes)
-					ftor(fp);
-				break;
-
-				case Dependency::Require:
-				for (const auto &fp: my_includes)
-					ftor(fp);
-				break;
-
-				case Dependency::Mine:
-				for (const auto &set: {my_includes, my_requires})
+				switch (link.type)
 				{
-					for (const auto &fp: set)
-						ftor(fp);
-				}
-				break;
+					case Link::Include:
+					if (dep == Dependency::Include || dep == Dependency::Mine)
+						ftor(link);
+					break;
 
-				case Dependency::All:
-				for (const auto &fp: all_dependencies)
-					ftor(fp);
-				break;
+					case Link::Require:
+					if (dep == Dependency::Require || dep == Dependency::Mine)
+						ftor(link);
+					break;
+				}
 			}
 		}
 

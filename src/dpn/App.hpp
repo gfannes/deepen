@@ -24,7 +24,7 @@ namespace dpn {
         bool show_list_due_();
         bool show_features_();
         bool show_todo_();
-        bool show_items_(List &, Sort, bool reverse, const Library::Filter &filter) const;
+        bool show_items_(List &, Sort, bool reverse, const Filter &filter) const;
         bool show_key_values_(bool verbose);
         bool update_(bool with_aggregates);
         bool export_();

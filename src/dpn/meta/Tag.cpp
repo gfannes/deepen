@@ -4,7 +4,7 @@
 
 namespace dpn { namespace meta { 
 
-	bool parse(std::optional<Tag> &tag, gubg::Strange &strange)
+	bool parse(Tag::Opt &tag, gubg::Strange &strange)
 	{
 		MSS_BEGIN(bool);
 

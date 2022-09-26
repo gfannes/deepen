@@ -12,11 +12,13 @@ namespace dpn { namespace meta {
 	class Tag
 	{
 	public:
+		using Opt = std::optional<Tag>;
+
 		std::string key;
 		std::string value;
 	};
 
-	bool parse(std::optional<Tag> &, gubg::Strange &);
+	bool parse(Tag::Opt &, gubg::Strange &);
 
 	std::ostream &operator<<(std::ostream &, const Tag &);
 
