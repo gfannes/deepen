@@ -88,24 +88,22 @@ namespace dpn {
 
         MSS(load_ontology_(), log::error() << "Could not load the ontology" << std::endl);
 
-        List nodes;
-        Id__Id part_of, after;
-        Id__DepIds requires;
+        plan::Graph graph;
         const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, };
-        MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
+        MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
 
-        plan::Planner planner;
-        MSS(planner.setup_tasks(nodes, part_of, after, requires), log::error() << "Could not setup the tasks in the planner" << std::endl);
+        // plan::Planner planner;
+        // MSS(planner.setup_tasks(nodes, part_of, after, requires), log::error() << "Could not setup the tasks in the planner" << std::endl);
         
-        if (options_.resources_fp)
-        {
-            const auto &fp = *options_.resources_fp;
-            MSS(planner.load_resources(fp), log::error() << "Could not load resources from " << fp << std::endl);
-        }
+        // if (options_.resources_fp)
+        // {
+        //     const auto &fp = *options_.resources_fp;
+        //     MSS(planner.load_resources(fp), log::error() << "Could not load resources from " << fp << std::endl);
+        // }
         
-        plan::Plan plan;
-        MSS(planner(plan), log::error() << "Could not create a plan" << std::endl);
-        std::cout << plan << std::endl;
+        // plan::Plan plan;
+        // MSS(planner(plan), log::error() << "Could not create a plan" << std::endl);
+        // std::cout << plan << std::endl;
 
         MSS_END();
     }
@@ -302,28 +300,10 @@ namespace dpn {
                 MSS(library_.export_mindmap("Features", list, filter, fp));
             if (ext == ".xml")
             {
-                if (true)
-                {
-                    const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, };
-                    List nodes;
-                    if (true)
-                    {
-                        plan::Graph graph;
-                        MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
-                        MSS(library_.export_msproj2(graph, fp));
-                    }
-                    else
-                    {
-                        Id__Id part_of, after;
-                        Id__DepIds requires;
-                        MSS(library_.get_graph(nodes, part_of, after, requires, filter), log::error() << "Could not get graph" << std::endl);
-                        // MSS(library_.export_msproj2(nodes, part_of, after, requires, fp));
-                    }
-                }
-                else
-                {
-                    MSS(library_.export_msproj(list, filter, fp));
-                }
+                plan::Graph graph;
+                const Filter filter = {.any_tags = options_.any_tags, .none_tags = options_.none_tags, };
+                MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
+                MSS(library_.export_msproj(graph, fp));
             }
         }
         

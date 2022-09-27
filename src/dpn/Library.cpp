@@ -373,14 +373,50 @@ namespace dpn {
 
 		compute_effort_([](Node &node) -> meta::Effort& {return node.total_effort;}, Filter{});
 
-		// Push sequence from root to leaf, but only within a file, not to all dependencies
+		//Push Sequence.fs from Link over Root to first child Node
+		for (auto &[_,file]: fp__file_)
+		{
+			auto push_fs = [&](auto &node, const auto &path){
+				if (node.type == Node::Type::Link && node.my_sequence && node.my_sequence->fs)
+				{
+					std::cout << "Pushing fs from " << node << std::endl;
+					auto push_fs2 = [&](auto &link){
+						gubg::with_value(fp__file_, link.fp, [&](auto &dst_file){
+							auto try_set = [&](auto &dst){
+								if (!dst.my_sequence)
+									dst.my_sequence.emplace();
+								if (!dst.my_sequence->fs)
+									dst.my_sequence->fs = node.my_sequence->fs;
+							};
+
+							auto &root = dst_file.root;
+							std::cout << "    to root " << root;
+
+							// Push to Root
+							try_set(root);
+
+							// Push to first child of Root
+							if (!root.childs.empty())
+							{
+								auto &first_child = root.childs.front();
+								std::cout << "    and first child " << first_child << std::endl;
+								try_set(first_child);
+							}
+						});
+					};
+					node.each_link(push_fs2, Dependency::Mine);
+				}
+			};
+			file.each_node(push_fs, Direction::Push);
+		}
+		// Push Sequence from root to leaf, but only within a file, not to all dependencies
 		for (auto &[_,file]: fp__file_)
 		{
 			auto aggregate_sequence = [](auto &node, const auto &path){
 				if (node.my_sequence)
 					node.agg_sequence = *node.my_sequence;
-				else if (!path.empty())
-					node.agg_sequence = path.back()->agg_sequence;
+				if (!path.empty())
+					node.agg_sequence.merge(path.back()->agg_sequence);
 			};
 			file.each_node(aggregate_sequence, Direction::Push);
 		}
@@ -510,184 +546,6 @@ namespace dpn {
 		MSS_END();
 	}
 
-	bool Library::get_nodes_links(List &nodes, Id__DepIds &links, const Filter &filter) const
-	{
-		MSS_BEGIN(bool);
-
-		nodes.clear();
-		links.clear();
-
-		std::map<const Node *, std::size_t> node__id;
-		auto add_node = [&](auto &node, const auto &path){
-			if (!filter(node))
-				return;
-
-			if (auto p = node__id.emplace(&node, node__id.size()); p.second)
-			{
-				auto &item = nodes.items.emplace_back(node);
-				item.path = path;
-			}
-		};
-		each_node(add_node, Tread{.dependency = Dependency::Mine, .include_link_nodes = true});
-
-		const auto nr_nodes = node__id.size();
-		for (const auto &[_,file]: fp__file_)
-		{
-			auto add_links = [&](auto &node, const auto &path){
-				if (!filter(node))
-					return;
-
-				const auto me_id = node__id[&node];
-
-				// Link from parent to me
-				if (!path.empty())
-				{
-					const auto &parent = *path.back();
-					if (filter(parent))
-					{
-						const auto parent_id = node__id[&parent];
-						links[parent_id].insert(me_id);
-					}
-				}
-
-				// Link from child to previous child
-				if (!node.agg_sequence.any)
-				{
-					std::optional<std::size_t> prev_child_id;
-					for (const auto &child: node.childs)
-					{
-						if (filter(child))
-						{
-							const auto child_id = node__id[&child];
-							if (prev_child_id)
-								links[child_id].insert(*prev_child_id);
-							prev_child_id = child_id;
-						}
-					}
-				}
-
-				// Link from me to my_includes, and from my_includes to my links
-				for (const auto &incl_fp: node.my_includes)
-				{
-					auto it = fp__file_.find(incl_fp);
-					if (it != fp__file_.end())
-					{
-						const auto &file = it->second;
-						if (filter(file.root))
-						{
-							const auto dep_id = node__id[&file.root];
-							links[me_id].insert(dep_id);
-						}
-					}
-				}
-			};
-			file.each_node(add_links, Direction::Push);
-		}
-		MSS(nr_nodes == node__id.size(), log::internal_error() << "More nodes were added" << std::endl);
-
-		MSS_END();
-	}
-
-	bool Library::get_graph(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const Filter &filter) const
-	{
-		MSS_BEGIN(bool);
-
-		nodes.clear();
-		part_of.clear();
-		after.clear();
-		requires.clear();
-
-		std::map<const Node *, std::size_t> node__id;
-		auto add_node = [&](auto &node, const auto &path){
-			if (!filter(node))
-				return;
-
-			if (auto p = node__id.emplace(&node, node__id.size()); p.second)
-			{
-				auto &item = nodes.items.emplace_back(node);
-				item.path = path;
-			}
-		};
-		each_node(add_node, Tread{.dependency = Dependency::Include, .include_link_nodes = true});
-		each_node(add_node, Tread{.dependency = Dependency::Mine, .include_link_nodes = true});
-
-		const auto nr_nodes = node__id.size();
-		for (const auto &[_,file]: fp__file_)
-		{
-			auto add_links = [&](auto &node, const auto &path){
-				if (!filter(node))
-					return;
-
-				const auto my_id = node__id[&node];
-
-				// node is part of its parent, if any
-				if (!path.empty())
-				{
-					const auto &parent = *path.back();
-					if (filter(parent))
-					{
-						const auto parent_id = node__id[&parent];
-						part_of[my_id] = parent_id;
-					}
-				}
-
-				// sibling dependencies
-				if (!node.agg_sequence.any)
-				{
-					std::optional<std::size_t> prev_child_id;
-					for (const auto &child: node.childs)
-					{
-						if (filter(child))
-						{
-							const auto child_id = node__id[&child];
-							if (prev_child_id)
-							{
-								// child comes after prev_child
-								after[child_id] = *prev_child_id;
-							}
-							prev_child_id = child_id;
-						}
-					}
-				}
-
-				// my_includes are part of node
-				for (const auto &incl_fp: node.my_includes)
-				{
-					auto it = fp__file_.find(incl_fp);
-					if (it != fp__file_.end())
-					{
-						const auto &file = it->second;
-						if (filter(file.root))
-						{
-							const auto dep_id = node__id[&file.root];
-							part_of[dep_id] = my_id;
-						}
-					}
-				}
-
-				// my_requires are only used by node, but not part.
-				// Eg, they can start before node starts
-				for (const auto &incl_fp: node.my_requires)
-				{
-					auto it = fp__file_.find(incl_fp);
-					if (it != fp__file_.end())
-					{
-						const auto &file = it->second;
-						if (filter(file.root))
-						{
-							const auto dep_id = node__id[&file.root];
-							requires[my_id].insert(dep_id);
-						}
-					}
-				}
-			};
-			file.each_node(add_links, Direction::Push);
-		}
-		MSS(nr_nodes == node__id.size(), log::internal_error() << "More nodes were added" << std::endl);
-
-		MSS_END();
-	}
-
 	bool Library::get_graph(plan::Graph &graph, const Filter &filter) const
 	{
 		MSS_BEGIN(bool);
@@ -703,7 +561,7 @@ namespace dpn {
 			return id;
 		};
 
-		std::set<const Node *> known_nodes;
+		std::map<const Node *, Id> first_users;
 		// We keep a path based on Ids ourselves
 		std::vector<Id> id_path;
 		auto assign_id = [&](const auto &node, const auto &path){
@@ -714,18 +572,28 @@ namespace dpn {
 			graph.vertices.insert(my_id);
 			graph.text[my_id] = node.text;
 			graph.depth[my_id] = path.size();
-			if (known_nodes.count(&node) == 0)
+			if (auto p = first_users.emplace(&node, my_id); p.second)
 			{
 				// First user pays
 				graph.my_effort[my_id] = node.my_effort.todo();
 				graph.agg_effort[my_id] = graph.my_effort[my_id];
 			}
+			else
+			{
+				graph.ff[my_id].insert(p.first->second);
+			}
 
 			// Setup graph.sibling and correct the id_path before it is used hereunder
 			if (id_path.size() > path.size())
 			{
-				if (path.empty() || !path.back()->agg_sequence.any)
-					graph.fs[my_id].insert(id_path[path.size()]);
+				if (!path.empty())
+				{
+					const auto &parent_node = *path.back();
+					const auto childs_are_parallel = parent_node.agg_sequence.childs_are_parallel.value_or(false);
+					const auto fs = node.agg_sequence.fs.value_or(true);
+					if (!childs_are_parallel && fs)
+						graph.fs[my_id].insert(id_path[path.size()]);
+				}
 			}
 			id_path.resize(path.size());
 
@@ -733,7 +601,6 @@ namespace dpn {
 			if (!id_path.empty())
 				graph.parent[my_id] = id_path.back();
 
-			known_nodes.insert(&node);
 			id_path.push_back(my_id);
 		};
 
@@ -749,6 +616,7 @@ namespace dpn {
 		}
 
 		// Prune leaf Vertices without effort
+		// If they have an ff relation (meaning their work is already payed by a predecessor), we keep the Vertex if its ff has agg_effort
 		std::set<Id> non_leafs;
 		for (bool again = true; again; )
 		{
@@ -766,8 +634,30 @@ namespace dpn {
 				if (non_leafs.count(id))
 					continue;
 				auto effort = gubg::get(graph.my_effort, id);
-				if (!effort || *effort == 0)
+				const bool has_effort = !!effort && *effort > 0;
+				auto ff = gubg::get(graph.ff, id);
+				const bool has_ff = !!ff && !ff->empty();
+				bool ff_has_effort = false;
+				if (ff)
+				{
+					for (auto ffid: *ff)
+					{
+						auto effort = gubg::get(graph.agg_effort, ffid);
+						if (!!effort && *effort > 0)
+							ff_has_effort = true;
+					}
+				}
+				bool parent_has_ff = false;
+				gubg::with_value(graph.parent, id, [&](auto pid){
+					auto ff = gubg::get(graph.ff, pid);
+					parent_has_ff = !!ff && !ff->empty();
+				});
+				// if (!has_effort && (!has_ff || !ff_has_effort))
+				if (!has_effort && (!has_ff || parent_has_ff))
+				{
+					std::cout << "Removing leaf " << *gubg::get(graph.text, id) << C(has_effort)C(has_ff)C(ff_has_effort) << std::endl;
 					empty_leafs.insert(id);
+				}
 			}
 
 			for (auto id: empty_leafs)
@@ -777,8 +667,11 @@ namespace dpn {
 		}
 
 		// Create leaf nodes for non-leafs with my_effort != 0
+		// Remove ff for non-leafs: Merlin Project does not allow it
 		for (auto id: non_leafs)
 		{
+			graph.ff.erase(id);
+
 			auto effort = gubg::get(graph.my_effort, id);
 			if (!effort || *effort == 0)
 				continue;
@@ -880,87 +773,7 @@ namespace dpn {
 		MSS_END();
 	}
 
-	bool Library::export_msproj(const List &list, const Filter &filter, const std::filesystem::path &output_fp) const
-	{
-		MSS_BEGIN(bool);
-
-		const auto folder = output_fp.parent_path();
-		if (!folder.empty())
-		{
-			if (!std::filesystem::exists(folder))
-				std::filesystem::create_directories(folder);
-			MSS(std::filesystem::is_directory(folder), log::error() << "Could not create folder " << folder << std::endl);
-		}
-
-		std::ofstream fo{output_fp, std::ios::binary};
-
-		gubg::xml::Writer writer{fo};
-		writer.prolog("version", "1.0", "encoding", "UTF-8", "standalone", "yes");
-		auto project = writer.tag("Project");
-		project.attr("xmlns", "http://schemas.microsoft.com/project");
-		auto tasks = project.tag("Tasks");
-
-		auto add_task = [&](unsigned int &uid, const auto &text, unsigned int depth, unsigned int minutes){
-			auto task = tasks.tag("Task");
-			task.tag("UID") << uid;
-			task.tag("Name") << (!text.empty() ? text : "[empty]");
-			task.tag("OutlineLevel") << depth;
-			if (minutes > 0)
-			{
-				task.tag("DurationFormat") << 53;
-				{
-					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
-					task.tag("Duration") << pt;
-					task.tag("Work") << pt;
-				}
-			}
-
-			++uid;
-		};
-
-		std::set<const Node *> already_added;
-
-		unsigned int uid = 0;
-		for (auto ix = 0u; ix < list.items.size(); ++ix)
-		{
-			const auto &item = list.items[ix];
-
-			auto lambda = [&](const auto &node, const auto &path){
-				if (!already_added.insert(&node).second)
-					return;
-				if (!filter(node))
-					return;
-
-				const auto effort = node.filtered_effort;
-				if (effort.todo() == 0)
-					return;
-				if (node.childs.empty())
-				{
-					// Leaf node
-					add_task(uid, node.text, path.size()+2, node.my_effort.todo()*15);
-				}
-				else
-				{
-					// Not a leaf node
-					if (node.my_effort.todo() > 0 && node.filtered_effort.todo() > node.my_effort.todo())
-					{
-						add_task(uid, node.text, path.size()+2, 0);
-						add_task(uid, node.text+" (self)", path.size()+3, node.my_effort.todo()*15);
-					}
-					else
-						add_task(uid, node.text, path.size()+2, node.my_effort.todo()*15);
-				}
-			};
-			each_node(item.node(), lambda, Tread{.dependency = Dependency::Mine});
-		}
-
-		MSS_END();
-	}
-
-	// Warning: still wip
-	// .? Start from get_features
-	// .? Prune branches without effort
-	bool Library::export_msproj2(const plan::Graph &graph, const std::filesystem::path &output_fp) const
+	bool Library::export_msproj(const plan::Graph &graph, const std::filesystem::path &output_fp) const
 	{
 		MSS_BEGIN(bool);
 
@@ -996,14 +809,15 @@ namespace dpn {
 			if (auto minutes_ptr = gubg::get(graph.my_effort, id))
 			{
 				const auto minutes = *minutes_ptr*15;
-				task.tag("DurationFormat") << 53;
+				if (minutes > 0)
 				{
-					const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
-					task.tag("Duration") << pt;
-					task.tag("Work") << pt;
+					task.tag("DurationFormat") << 53;
+					{
+						const std::string pt = std::string("PT0H")+std::to_string(minutes)+"M0S";
+						task.tag("Duration") << pt;
+						task.tag("Work") << pt;
+					}
 				}
-				if (minutes == 0)
-					task.tag("Milestone") << 1;
 			}
 			gubg::with_value(graph.fs, id, [&](const auto &oids){
 				for (auto oid: oids)
@@ -1011,6 +825,15 @@ namespace dpn {
 					auto predecessor_link = task.tag("PredecessorLink");
 					predecessor_link.tag("PredecessorUID") << oid;
 					predecessor_link.tag("Type") << 1;
+				}
+			});
+			gubg::with_value(graph.ff, id, [&](const auto &oids){
+				task.tag("Milestone") << 1;
+				for (auto oid: oids)
+				{
+					auto predecessor_link = task.tag("PredecessorLink");
+					predecessor_link.tag("PredecessorUID") << oid;
+					predecessor_link.tag("Type") << 0;
 				}
 			});
 		}

@@ -13,7 +13,10 @@ namespace dpn { namespace meta {
 	class Sequence
 	{
 	public:
-		bool any = false;
+		std::optional<bool> childs_are_parallel;
+		std::optional<bool> fs;
+
+		void merge(const Sequence &);
 	};
 
 	bool parse(std::optional<Sequence> &, gubg::Strange &);

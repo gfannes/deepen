@@ -38,13 +38,10 @@ namespace dpn {
 		bool get_features(List &, const Filter &);
 		bool get_todo(List &, const Filter &);
 
-        bool get_nodes_links(List &, Id__DepIds &, const Filter &) const;
-        bool get_graph(List &nodes, Id__Id &part_of, Id__Id &after, Id__DepIds &requires, const Filter &) const;
         bool get_graph(plan::Graph &, const Filter &) const;
 
 		bool export_mindmap(const std::string &root_text, const List &, const Filter &, const std::filesystem::path &) const;
-		bool export_msproj(const List &, const Filter &, const std::filesystem::path &) const;
-		bool export_msproj2(const plan::Graph &, const std::filesystem::path &) const;
+		bool export_msproj(const plan::Graph &, const std::filesystem::path &) const;
 
 		template <typename Ftor>
 		void each_file(Ftor &&ftor){for (const auto &[_,file]: fp__file_) ftor(file);}
