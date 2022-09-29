@@ -365,8 +365,22 @@ namespace dpn {
 		for (auto &[fp,file]: fp__file_)
 		{
 			auto set_my_effort_to_done = [&](auto &node, const auto &_){
-				if (node.agg_state && node.agg_state->status == meta::Status::Done)
-					node.my_effort.done = node.my_effort.total;
+				if (node.agg_state)
+				{
+					switch (node.agg_state->status)
+					{
+						case meta::Status::Done:
+						node.my_effort.done = node.my_effort.total;
+						break;
+
+						case meta::Status::Canceled:
+						node.my_effort.total = 0;
+						node.my_effort.done = 0;
+						break;
+
+						default: break;
+					}
+				}
 			};
 			file.each_node(set_my_effort_to_done, Direction::Push);
 		}
