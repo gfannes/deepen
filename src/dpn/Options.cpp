@@ -80,6 +80,7 @@ namespace dpn {
                     else if (is("-k", "--color_output"))    {MSS(argr.pop(color_output),              log::error() << "Expected a boolean" << std::endl);}
                     else if (is("-r", "--reverse"))         {reverse = true;}
                     else if (is("-R", "--resources"))       {MSS(argr.pop(resources_fp.emplace()),              log::error() << "Expected a resources filepath" << std::endl);}
+                    else if (is("-l", "--list-files"))      {list_files = true;}
                     else if (is("-s", "--sort"))
                     {
                         MSS(argr.pop(tmp), log::error() << "Expected a string" << std::endl);

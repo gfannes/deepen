@@ -26,6 +26,7 @@ namespace dpn {
         std::optional<Sort> sort;
         bool reverse = false;
         std::optional<meta::Moscow> moscow;
+        bool list_files = false;
 
         std::list<std::string> input_filepaths;
         std::optional<std::string> output_filepath;
