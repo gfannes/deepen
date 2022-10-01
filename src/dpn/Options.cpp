@@ -252,6 +252,7 @@ namespace dpn {
         option("-k", "--color_output", "<BOOLEAN>", "Set colored output [default: yes]");
         option("-r", "--reverse", "", "Show items in reversed order [default: no]");
         option("-R", "--resources", "<FILEPATH>", "Filepath to resources used for planning [optional]");
+        option("-l", "--list-files", "", "Show filenames [optional]");
         option("-s", "--sort", "no|effort|urgency|rice|due", "Sort shown items [default: depends on item shown]");
         option("-t", "--any_tag", "<STRING>:<STRING>", "Include key-value tag, all keys should match (AND), one value per key is enough (OR)");
         option("-T", "--none_tag", "<STRING>:<STRING>", "Exclude key-value tag, all keys should match (AND), one value per key is enough (OR)");

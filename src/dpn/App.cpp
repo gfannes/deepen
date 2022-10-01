@@ -217,13 +217,11 @@ namespace dpn {
                 std::cout << "";
             std::cout << termcolor::reset;
 
+            std::cout << ' ' << path_color                                                        << path << termcolor::reset;
+            std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::left << text << termcolor::reset;
             if (options_.list_files)
-            {
-                std::cout << ' ' << path_color                                                        << path << termcolor::reset;
-                std::cout << ' ' << text_color << std::setw(max_path_text_w-path.size()) << std::left << text << termcolor::reset;
                 std::cout << ' ' << fp_color   << std::setw(max_fp_w)                    << std::left << (fp != prev_fp ? fp : "") << termcolor::reset;
-                std::cout << std::endl;
-            }
+            std::cout << std::endl;
 
             prev_fp = fp;
         };
