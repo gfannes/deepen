@@ -23,6 +23,7 @@ namespace dpn { namespace meta {
 
 		Effort &operator+=(const Effort &rhs);
 		bool operator==(const Effort &rhs) const;
+		bool operator!=(const Effort &rhs) const {return !operator==(rhs);}
 
 		void clear() {*this = Effort{};}
 

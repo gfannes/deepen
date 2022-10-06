@@ -64,6 +64,8 @@ namespace dpn {
 
 		meta::Effort filtered_effort;
 		meta::Effort total_effort;
+		meta::Effort abs_effort;
+		std::optional<meta::Effort> diff_effort;
 		meta::Effort tmp_effort_;
 
 		std::optional<meta::Urgency> my_urgency;

@@ -108,17 +108,19 @@ namespace dpn {
 		{
 			const auto do_process = filter(node) && (tread.include_link_nodes || node.type == Node::Type::Normal);
 			Agg *parent_agg = nullptr;
+			Agg *my_agg = nullptr;
 			if (do_process)
 			{
 				if (!aggs.empty())
 					parent_agg = &aggs.back();
+				my_agg = &aggs.emplace_back(node, args...);
+
 				if (tread.direction == Direction::Push)
 				{
-					auto &dst = aggs.emplace_back(node, args...);
 					if (parent_agg)
 					{
 						auto &src = *parent_agg;
-						dst(src);
+						my_agg->operator()(src);
 					}
 				}
 			}
@@ -137,11 +139,10 @@ namespace dpn {
 			{
 				if (tread.direction == Direction::Pull)
 				{
-					auto &src = aggs.emplace_back(node, args...);
 					if (parent_agg)
 					{
 						auto &dst = *parent_agg;
-						dst(src);
+						dst(*my_agg);
 					}
 				}
 				aggs.pop_back();
@@ -152,17 +153,19 @@ namespace dpn {
 		{
 			const auto do_process = filter(node) && (tread.include_link_nodes || node.type == Node::Type::Normal);
 			Agg *parent_agg = nullptr;
+			Agg *my_agg = nullptr;
 			if (do_process)
 			{
 				if (!aggs.empty())
 					parent_agg = &aggs.back();
+				my_agg = &aggs.emplace_back(node, args...);
+
 				if (tread.direction == Direction::Push)
 				{
-					auto &dst = aggs.emplace_back(node, args...);
 					if (parent_agg)
 					{
 						auto &src = *parent_agg;
-						dst(src);
+						my_agg->operator()(src);
 					}
 				}
 			}
@@ -181,11 +184,10 @@ namespace dpn {
 			{
 				if (tread.direction == Direction::Pull)
 				{
-					auto &src = aggs.emplace_back(node, args...);
 					if (parent_agg)
 					{
 						auto &dst = *parent_agg;
-						dst(src);
+						dst(*my_agg);
 					}
 				}
 				aggs.pop_back();

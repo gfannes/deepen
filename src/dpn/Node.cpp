@@ -53,6 +53,8 @@ namespace dpn {
 		n.attr("text", node.text);
 		n.attr("depth", node.depth(true));
 		n.attr("parent", node.parent);
+		n.attr("my_effort", node.my_effort);
+		n.attr("abs_effort", node.abs_effort);
 		n.attr("all_tags", gubg::hr(node.all_tags));
 		return os;
 	}

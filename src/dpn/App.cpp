@@ -127,7 +127,9 @@ namespace dpn {
             for (const auto ix: ixs)
             {
                 const auto &item = list.items[ix];
-                lambda(Item, ix, item.filtered_effort(), item.node().my_effort, to_string(item.path), item.text(), item.fp.string());
+                const auto &node = item.node();
+
+                lambda(Item, ix, node.abs_effort, node.diff_effort.value_or(meta::Effort{}), to_string(item.path), item.text(), item.fp.string());
                 if (options_.all_details || options_.details.count(ix))
                 {
                     auto show_details = [&](const auto &node, const auto &path){
@@ -137,7 +139,7 @@ namespace dpn {
                             return;
                         if (node.text.empty() && node.filtered_effort.total == 0)
                             return;
-                        lambda(path.size(), -1, node.filtered_effort, node.my_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
+                        lambda(path.size(), -1, node.abs_effort, node.my_effort, std::string(2*path.size(), ' ')+node.text, "", library_.get_fp(node).value_or(""));
                     };
                     library_.each_node(item.node(), show_details, Tread{.dependency = Dependency::Mine});
                 }
@@ -204,10 +206,12 @@ namespace dpn {
             std::cout << termcolor::reset;
 
             std::cout << ' ' << effort_color << std::setw(max_agg_effort_w) << std::left;
-            if (level > Item && (agg_effort.total == 0 || agg_effort == my_effort))
-                std::cout << "";
-            else
+            if (level <= Item)
                 std::cout << agg_effort;
+            else if (agg_effort.total > 0)
+                std::cout << meta::Effort::to_dsl(agg_effort.todo());
+            else
+                std::cout << ' ';
             std::cout << termcolor::reset;
 
             std::cout << ' ' << effort_color << std::setw(max_my_todo_w) << std::left;

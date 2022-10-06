@@ -936,6 +936,50 @@ namespace dpn {
 
 	void Library::compute_effort_(std::function<meta::Effort&(Node&)> get_effort, const Filter &filter)
 	{
+		using Node__Effort = std::map<const Node *, meta::Effort>;
+		using Node__Node__Effort = std::map<const Node *, Node__Effort>;
+		using Nodes = std::set<const Node *>;
+
+		struct Lambda
+		{
+			Node &node;
+			Node__Effort &node__effort;
+			Node__Effort local_node__effort;
+
+			Lambda(Node &node, Node__Node__Effort &node__node__effort, Nodes &nodes): node(node), node__effort(node__node__effort[&node])
+			{
+				node__effort[&node] = node.my_effort;
+				if (nodes.insert(&node).second)
+					local_node__effort[&node] = node.my_effort;
+			}
+			void operator()(const Lambda &rhs)
+			{
+				for (const auto &[node,effort]: rhs.node__effort)
+					node__effort[node] = effort;
+				for (const auto &[node,effort]: rhs.local_node__effort)
+					local_node__effort[node] = effort;
+			}
+			~Lambda()
+			{
+				node.abs_effort = {};
+				for (const auto &[ptr,effort]: node__effort)
+					node.abs_effort += effort;
+
+				if (!node.diff_effort)
+				{
+					auto &diff_effort = node.diff_effort.emplace();
+					for (const auto &[ptr,effort]: local_node__effort)
+						diff_effort += effort;
+				}
+			}
+		};
+
+		const Tread tread = {.direction = Direction::Pull, .dependency = Dependency::Mine};
+		Node__Node__Effort node__node__effort;
+		Nodes nodes;
+		aggregate<Lambda>(tread, filter, node__node__effort, nodes);
+
+#if 0
 		// Compute the aggregate effort restricted to a single file, for all files and nodes
 		for (auto &[fp,file]: fp__file_)
 		{
@@ -970,6 +1014,7 @@ namespace dpn {
 			};
 			file.each_node(compute_total_effort, Direction::Push);
 		}
+#endif
 	}
 
 	void Library::compute_effort_(List &list, const Filter &filter)
