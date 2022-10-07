@@ -331,7 +331,7 @@ namespace dpn {
 					{
 						if (!node.agg_state)
 							node.agg_state = parent.agg_state;
-						AGG(ok, node.agg_state == parent.agg_state, log::error() << "State conflict detected with parent.agg_state" << std::endl);
+						AGG(ok, node.agg_state == parent.agg_state, log::error() << "agg_state conflict detected between parent and node" << std::endl << parent << node);
 					}
 				}
 

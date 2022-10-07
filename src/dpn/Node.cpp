@@ -55,7 +55,21 @@ namespace dpn {
 		n.attr("parent", node.parent);
 		n.attr("my_effort", node.my_effort);
 		n.attr("abs_effort", node.abs_effort);
-		n.attr("all_tags", gubg::hr(node.all_tags));
+		if (node.agg_state)
+			n.attr("agg_state", *node.agg_state);
+		for (const auto &[key,values]: node.all_tags)
+		{
+			std::ostringstream oss;
+			oss << key << ':';
+			gubg::OnlyOnce skip_comma;
+			for (const auto &value: values)
+			{
+				if (!skip_comma())
+					oss << ',';
+				oss << value;
+			}
+			n.attr("tag", oss.str());
+		}
 		return os;
 	}
 
