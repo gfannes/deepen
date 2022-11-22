@@ -13,7 +13,7 @@ def cooker(&block)
     require("gubg/build/Cooker")
     c = Gubg::Build::Cooker.new
 
-    toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
+    toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[Gubg.os()]
     c.toolchain(toolchain)
 
     cpp_version = {gcc: "17", msvc: :latest, clang: "17"}[toolchain]
@@ -21,7 +21,7 @@ def cooker(&block)
     c.option("fail_on_warning", "return")
     c.option("debug_symbols", "true")
 
-    case GUBG.os()
+    case Gubg.os()
     when :linux
     when :macos
         c.option("target", "x86_64-apple-macos11.3")
