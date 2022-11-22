@@ -11,7 +11,7 @@ end
 
 def cooker(&block)
     require("gubg/build/Cooker")
-    c = GUBG::Build::Cooker.new
+    c = Gubg::Build::Cooker.new
 
     toolchain = {linux: :gcc, windows: :msvc, macos: :clang}[GUBG.os()]
     c.toolchain(toolchain)
