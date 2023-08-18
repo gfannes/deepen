@@ -1,4 +1,5 @@
 require_relative(File.join(ENV["gubg"], "gubg.build/load"))
+require('fileutils')
 
 task :default do
     sh "rake -T"
@@ -7,6 +8,19 @@ end
 desc "Install"
 task :install => :build do
     sh "cp dpn.app #{ENV["gubg"]}/bin/dpn"
+
+    here_dir = File.dirname(__FILE__)
+    bin_dir = File.join(ENV['HOME'], '.local/bin')
+    FileUtils.mkdir_p(bin_dir)
+    name = 'dpnlsp'
+    fp = File.join(bin_dir, name)
+    File.open(fp, 'w') do |fo|
+        fo.puts("#!/usr/bin/env ruby")
+        fo.puts("$LOAD_PATH << '#{File.join(here_dir, 'src')}'")
+        fo.puts("require('dpn/lsp/main')")
+        fo.puts("Dpn::Lsp.main()")
+    end
+    FileUtils.chmod(0755, fp)
 end
 
 def cooker(&block)
