@@ -18,7 +18,7 @@ namespace dpn { namespace plan {
 		MSS_END();
 	}
 
-	bool Planner::setup_tasks(const List &nodes, const Id__Id &part_of, const Id__Id &after, const Id__DepIds &requires)
+	bool Planner::setup_tasks(const List &nodes, const Id__Id &part_of, const Id__Id &after, const Id__DepIds &reqs)
 	{
 		MSS_BEGIN(bool, "");
 
@@ -40,7 +40,7 @@ namespace dpn { namespace plan {
 			gubg::with_value(after, id, [&](auto prev_id){
 				task.fs.insert(prev_id);
 			});
-			gubg::with_value(requires, id, [&](const auto &deps){
+			gubg::with_value(reqs, id, [&](const auto &deps){
 				for (const auto &dep: deps)
 					task.ff.insert(dep);
 			});

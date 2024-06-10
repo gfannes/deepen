@@ -18,7 +18,7 @@ namespace dpn { namespace plan {
 	{
 	public:
 		bool load_resources(const std::string &filepath);
-		bool setup_tasks(const List &nodes, const Id__Id &part_of, const Id__Id &after, const Id__DepIds &requires);
+		bool setup_tasks(const List &nodes, const Id__Id &part_of, const Id__Id &after, const Id__DepIds &reqs);
 
 		bool operator()(Plan &);
 

@@ -93,7 +93,7 @@ namespace dpn {
         MSS(library_.get_graph(graph, filter), log::error() << "Could not get graph" << std::endl);
 
         // plan::Planner planner;
-        // MSS(planner.setup_tasks(nodes, part_of, after, requires), log::error() << "Could not setup the tasks in the planner" << std::endl);
+        // MSS(planner.setup_tasks(nodes, part_of, after, reqs), log::error() << "Could not setup the tasks in the planner" << std::endl);
         
         // if (options_.resources_fp)
         // {
